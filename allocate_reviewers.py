@@ -102,6 +102,8 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         return selected_reviewers
 
+    # To process devs with preferable_reviewers first.
+    devs.sort(key=lambda dev: not dev.preferable_reviewers)
     for dev in devs:
         reviewers = get_reviewers(
             dev.name, dev.reviewer_number, dev.preferable_reviewers
