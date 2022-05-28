@@ -1,19 +1,21 @@
 import math
 import random
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import List, Callable, Tuple
-
+import pprint
 import gspread
+from typing import List
+from datetime import datetime
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from gspread import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
-import pprint
+
 
 SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
 ]
 CREDENTIAL_FILE = "client_key.json"
+SHEET_NAME = "R"
 MINIMUM_REVIEWER_NUMBER = 1
 EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
 pp = pprint.PrettyPrinter()
@@ -28,23 +30,20 @@ class Developer:
     review_for: List[str] = field(default_factory=list)
 
 
-def get_remote_sheet() -> Tuple[Worksheet, Callable[[], None]]:
-    """
-    Returns:
-        Tuple[Worksheet, Callable[[], None]]: The first worksheet and a function to close connection to GSheet.
-    """
+@contextmanager
+def get_remote_sheet() -> Worksheet:
     credential = ServiceAccountCredentials.from_json_keyfile_name(
         CREDENTIAL_FILE, SCOPE
     )
     client = gspread.authorize(credential)
-    sheet = client.open("Reviewers").sheet1
-    return sheet, lambda: client.session.close()
+    sheet = client.open(SHEET_NAME).sheet1
+    yield sheet
+    client.session.close()
 
 
 def load_data() -> List[Developer]:
-    sheet, close_connection = get_remote_sheet()
-    records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-    close_connection()
+    with get_remote_sheet() as sheet:
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
 
     input_developers = list()
     for record in records:
@@ -78,10 +77,17 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             (List[Developer]): A list of reviewers for the developer
         """
         if preferable_reviewers:
+            if reviewer_number < len(preferable_reviewers):
+                preferable_reviewers = random.sample(
+                    preferable_reviewers, reviewer_number
+                )
             return [dev for dev in devs if dev.name in preferable_reviewers]
 
         fist_available_reviewers = [
-            dev for dev in devs if dev.name != dev_name and len(dev.review_for) < max(maximum_review_times - 1, 1)
+            dev
+            for dev in devs
+            if dev.name != dev_name
+            and len(dev.review_for) < max(maximum_review_times - 1, 1)
         ]
         if len(fist_available_reviewers) >= reviewer_number:
             selected_reviewers = random.sample(
@@ -114,25 +120,24 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
 
 def update_data(devs: List[Developer]) -> None:
-    sheet, close_connection = get_remote_sheet()
-    records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
     col_index = len(EXPECTED_HEADERS) + 1
     col_header = datetime.now().strftime("%d-%m-%Y")
     update_column = [col_header]
-    for record in records:
-        developer = next(dev for dev in devs if dev.name == record["Developer"])
-        reviewers = ", ".join(reviewer for reviewer in developer.reviewers)
-        update_column.append(reviewers)
-    sheet.insert_cols([update_column], col_index)
-    close_connection()
+
+    with get_remote_sheet() as sheet:
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
+        for record in records:
+            developer = next(dev for dev in devs if dev.name == record["Developer"])
+            reviewers = ", ".join(reviewer for reviewer in developer.reviewers)
+            update_column.append(reviewers)
+        sheet.insert_cols([update_column], col_index)
 
 
 def write_exception(error: str) -> None:
-    sheet, close_connection = get_remote_sheet()
     col_index = len(EXPECTED_HEADERS) + 1
     update_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
-    sheet.insert_cols([update_column], col_index)
-    close_connection()
+    with get_remote_sheet() as sheet:
+        sheet.insert_cols([update_column], col_index)
 
 
 if __name__ == "__main__":
