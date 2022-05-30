@@ -10,7 +10,7 @@ from gspread import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-SCOPE = [
+DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
 ]
@@ -18,7 +18,7 @@ CREDENTIAL_FILE = "client_key.json"
 SHEET_NAME = "R"
 MINIMUM_REVIEWER_NUMBER = 1
 EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
-pp = pprint.PrettyPrinter()
+printer = pprint.PrettyPrinter()
 
 
 @dataclass
@@ -33,7 +33,7 @@ class Developer:
 @contextmanager
 def get_remote_sheet() -> Worksheet:
     credential = ServiceAccountCredentials.from_json_keyfile_name(
-        CREDENTIAL_FILE, SCOPE
+        CREDENTIAL_FILE, DRIVE_SCOPE
     )
     client = gspread.authorize(credential)
     sheet = client.open(SHEET_NAME).sheet1
@@ -41,7 +41,7 @@ def get_remote_sheet() -> Worksheet:
     client.session.close()
 
 
-def load_data() -> List[Developer]:
+def load_developers_from_sheet() -> List[Developer]:
     with get_remote_sheet() as sheet:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
 
@@ -56,11 +56,15 @@ def load_data() -> List[Developer]:
         )
         input_developers.append(developer)
 
-    # pp.pprint(input_developers)
+    # printer.pprint(input_developers)
     return input_developers
 
 
 def allocate_reviewers(devs: List[Developer]) -> None:
+    """
+    Assign reviewers to input developers.
+    Note: the function mutate directly the input argument "devs".
+    """
     maximum_review_times = math.ceil(
         sum([dev.reviewer_number for dev in devs]) / len(devs)
     )
@@ -119,33 +123,34 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             reviewer.review_for.append(dev.name)
 
 
-def update_data(devs: List[Developer]) -> None:
-    col_index = len(EXPECTED_HEADERS) + 1
-    col_header = datetime.now().strftime("%d-%m-%Y")
-    update_column = [col_header]
+def write_reviewers_to_sheet(devs: List[Developer]) -> None:
+    column_index = len(EXPECTED_HEADERS) + 1
+    column_header = datetime.now().strftime("%d-%m-%Y")
+    new_column = [column_header]
 
     with get_remote_sheet() as sheet:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
         for record in records:
             developer = next(dev for dev in devs if dev.name == record["Developer"])
             reviewers = ", ".join(reviewer for reviewer in developer.reviewers)
-            update_column.append(reviewers)
-        sheet.insert_cols([update_column], col_index)
+            new_column.append(reviewers)
+        sheet.insert_cols([new_column], column_index)
 
 
-def write_exception(error: str) -> None:
-    col_index = len(EXPECTED_HEADERS) + 1
-    update_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
+def write_exception_to_sheet(error: str) -> None:
+    column_index = len(EXPECTED_HEADERS) + 1
+    new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
+
     with get_remote_sheet() as sheet:
-        sheet.insert_cols([update_column], col_index)
+        sheet.insert_cols([new_column], column_index)
 
 
 if __name__ == "__main__":
     try:
-        developers = load_data()
+        developers = load_developers_from_sheet()
         allocate_reviewers(developers)
-        # pp.pprint("Allocating results:")
-        # pp.pprint(developers)
-        update_data(developers)
+        # printer.pprint("Allocating results:")
+        # printer.pprint(developers)
+        write_reviewers_to_sheet(developers)
     except Exception as exc:
-        write_exception(str(exc))
+        write_exception_to_sheet(str(exc))
