@@ -1,9 +1,8 @@
 import os
-import math
 import random
 import gspread
 from dotenv import load_dotenv, find_dotenv
-from typing import List
+from typing import List, Set
 from datetime import datetime
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -15,7 +14,7 @@ load_dotenv(find_dotenv())
 CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
 SHEET_NAME = os.environ.get("SHEET_NAME")
 MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER"))
-EXPERIENCED_DEVS = os.environ.get("EXPERIENCED_DEVS").split(", ")
+EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES").split(", "))
 
 DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
@@ -28,9 +27,9 @@ EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
 class Developer:
     name: str
     reviewer_number: int
-    preferable_reviewers: List[str]
-    reviewers: List[str] = field(default_factory=list)
-    review_for: List[str] = field(default_factory=list)
+    preferable_reviewer_names: Set[str]
+    reviewer_names: Set[str] = field(default_factory=set)
+    review_for: Set[str] = field(default_factory=set)
 
 
 @contextmanager
@@ -53,9 +52,9 @@ def load_developers_from_sheet() -> List[Developer]:
         developer = Developer(
             name=record["Developer"],
             reviewer_number=record["Reviewer Number"] or MINIMUM_REVIEWER_NUMBER,
-            preferable_reviewers=record["Preferable Reviewers"].split(", ")
+            preferable_reviewer_names=set(record["Preferable Reviewers"].split(", "))
             if record["Preferable Reviewers"]
-            else [],
+            else set(),
         )
         input_developers.append(developer)
 
@@ -65,62 +64,55 @@ def load_developers_from_sheet() -> List[Developer]:
 def allocate_reviewers(devs: List[Developer]) -> None:
     """
     Assign reviewers to input developers.
-    Note: the function mutate directly the input argument "devs".
+    The function mutate directly the input argument "devs".
     """
-    maximum_review_times = math.ceil(
-        sum([dev.reviewer_number for dev in devs]) / len(devs)
-    )
-
-    def get_reviewers(
-        dev_name: str, reviewer_number: int, preferable_reviewers: List[str]
-    ) -> List[Developer]:
+    def shuffle_and_get_the_most_available_names_for(dev_name, available_names, number_of_names):
         """
         Parameters:
             dev_name (str): Name of the developer
-            reviewer_number (int): Number of reviewers for the developer
-            preferable_reviewers (List[str]): List of preferable reviewers for the developer
+            available_names (Set[str]): List of available names
+            number_of_names (int): Number of names to get
         Returns:
-            (List[Developer]): A list of reviewers for the developer
+            (List[str]): A list of reviewer names for the developer from available names.
         """
-        if preferable_reviewers and reviewer_number < len(preferable_reviewers):
-            preferable_reviewers = random.sample(
-                preferable_reviewers, reviewer_number
-            )
-            return [dev for dev in devs if dev.name in preferable_reviewers]
-
-        first_available_reviewers = [
-            dev
-            for dev in devs
-            if dev.name != dev_name
-            and len(dev.review_for) < max(maximum_review_times - 1, 1)
+        selectable_names = [
+            name for name in available_names if name != dev_name
         ]
-        if len(first_available_reviewers) >= reviewer_number:
-            return random.sample(
-                first_available_reviewers, reviewer_number
-            )
-
-        second_available_reviewers = [
-            dev
-            for dev in devs
-            if dev.name != dev_name
-            and dev not in first_available_reviewers
-            and len(dev.review_for) < maximum_review_times
-        ]
-        selected_reviewers = first_available_reviewers + random.sample(
-            second_available_reviewers,
-            reviewer_number - len(first_available_reviewers),
+        random.shuffle(selectable_names)
+        sorted(
+            selectable_names,
+            lambda name: len(
+                next(dev for dev in devs if dev.name == name).review_for
+            ),
         )
-        return selected_reviewers
+        return selectable_names[0: number_of_names]
 
-    # To process devs with preferable_reviewers first.
-    devs.sort(key=lambda dev: not dev.preferable_reviewers)
+    # To process devs with preferable_reviewer_names first.
+    devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
     for dev in devs:
-        reviewers = get_reviewers(
-            dev.name, dev.reviewer_number, dev.preferable_reviewers
-        )
+        reviewer_number = dev.reviewer_number
+        preferable_reviewer_names = dev.preferable_reviewer_names.copy()
+        chosen_reviewer_names = set()
+        if EXPERIENCED_DEV_NAMES:
+            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, EXPERIENCED_DEV_NAMES, 1)
+            chosen_reviewer_names.update(chosen_names)
+            for name in chosen_names:
+                preferable_reviewer_names.remove(name)
+            reviewer_number = max(reviewer_number - len(chosen_names), 0)
+
+        if reviewer_number <= len(preferable_reviewer_names):
+            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, preferable_reviewer_names, reviewer_number)
+            chosen_reviewer_names.update(chosen_names)
+        else:
+            chosen_reviewer_names.update(preferable_reviewer_names)
+            reviewer_number = max(reviewer_number - len(preferable_reviewer_names), 0)
+            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, [dev.name for dev in devs], reviewer_number)
+            chosen_reviewer_names.update(chosen_names)
+
+        reviewers = [dev for dev in devs if dev.name in chosen_reviewer_names]
         for reviewer in reviewers:
-            dev.reviewers.append(reviewer.name)
-            reviewer.review_for.append(dev.name)
+            dev.reviewer_names.add(reviewer.name)
+            reviewer.review_for.add(dev.name)
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
@@ -132,8 +124,8 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
         for record in records:
             developer = next(dev for dev in devs if dev.name == record["Developer"])
-            reviewers = ", ".join(reviewer for reviewer in developer.reviewers)
-            new_column.append(reviewers)
+            reviewer_names = ", ".join(developer.reviewer_names)
+            new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
 
 
