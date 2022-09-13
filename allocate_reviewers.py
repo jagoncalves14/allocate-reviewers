@@ -66,7 +66,10 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
-    def shuffle_and_get_the_most_available_names_for(dev_name, available_names, number_of_names):
+
+    def shuffle_and_get_the_most_available_names_for(
+        dev_name, available_names, number_of_names
+    ):
         """
         Parameters:
             dev_name (str): Name of the developer
@@ -75,17 +78,13 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         Returns:
             (List[str]): A list of reviewer names for the developer from available names.
         """
-        selectable_names = [
-            name for name in available_names if name != dev_name
-        ]
+        selectable_names = [name for name in available_names if name != dev_name]
         random.shuffle(selectable_names)
         sorted(
             selectable_names,
-            lambda name: len(
-                next(dev for dev in devs if dev.name == name).review_for
-            ),
+            lambda name: len(next(dev for dev in devs if dev.name == name).review_for),
         )
-        return selectable_names[0: number_of_names]
+        return selectable_names[0:number_of_names]
 
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
@@ -94,19 +93,25 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         preferable_reviewer_names = dev.preferable_reviewer_names.copy()
         chosen_reviewer_names = set()
         if EXPERIENCED_DEV_NAMES:
-            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, EXPERIENCED_DEV_NAMES, 1)
+            chosen_names = shuffle_and_get_the_most_available_names_for(
+                dev.name, EXPERIENCED_DEV_NAMES, 1
+            )
             chosen_reviewer_names.update(chosen_names)
             for name in chosen_names:
                 preferable_reviewer_names.remove(name)
             reviewer_number = max(reviewer_number - len(chosen_names), 0)
 
         if reviewer_number <= len(preferable_reviewer_names):
-            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, preferable_reviewer_names, reviewer_number)
+            chosen_names = shuffle_and_get_the_most_available_names_for(
+                dev.name, preferable_reviewer_names, reviewer_number
+            )
             chosen_reviewer_names.update(chosen_names)
         else:
             chosen_reviewer_names.update(preferable_reviewer_names)
             reviewer_number = max(reviewer_number - len(preferable_reviewer_names), 0)
-            chosen_names = shuffle_and_get_the_most_available_names_for(dev.name, [dev.name for dev in devs], reviewer_number)
+            chosen_names = shuffle_and_get_the_most_available_names_for(
+                dev.name, [dev.name for dev in devs], reviewer_number
+            )
             chosen_reviewer_names.update(chosen_names)
 
         reviewers = [dev for dev in devs if dev.name in chosen_reviewer_names]
