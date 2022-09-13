@@ -1,7 +1,8 @@
+import os
 import math
 import random
-import pprint
 import gspread
+from dotenv import load_dotenv, find_dotenv
 from typing import List
 from datetime import datetime
 from contextlib import contextmanager
@@ -9,16 +10,18 @@ from dataclasses import dataclass, field
 from gspread import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
+load_dotenv(find_dotenv())
+
+CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
+SHEET_NAME = os.environ.get("SHEET_NAME")
+MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER"))
+EXPERIENCED_DEVS = os.environ.get("EXPERIENCED_DEVS").split(", ")
 
 DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
 ]
-CREDENTIAL_FILE = "client_key.json"
-SHEET_NAME = "R"
-MINIMUM_REVIEWER_NUMBER = 1
 EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
-printer = pprint.PrettyPrinter()
 
 
 @dataclass
@@ -56,7 +59,6 @@ def load_developers_from_sheet() -> List[Developer]:
         )
         input_developers.append(developer)
 
-    # printer.pprint(input_developers)
     return input_developers
 
 
@@ -80,36 +82,34 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         Returns:
             (List[Developer]): A list of reviewers for the developer
         """
-        if preferable_reviewers:
-            if reviewer_number < len(preferable_reviewers):
-                preferable_reviewers = random.sample(
-                    preferable_reviewers, reviewer_number
-                )
+        if preferable_reviewers and reviewer_number < len(preferable_reviewers):
+            preferable_reviewers = random.sample(
+                preferable_reviewers, reviewer_number
+            )
             return [dev for dev in devs if dev.name in preferable_reviewers]
 
-        fist_available_reviewers = [
+        first_available_reviewers = [
             dev
             for dev in devs
             if dev.name != dev_name
             and len(dev.review_for) < max(maximum_review_times - 1, 1)
         ]
-        if len(fist_available_reviewers) >= reviewer_number:
-            selected_reviewers = random.sample(
-                fist_available_reviewers, reviewer_number
-            )
-        else:
-            second_available_reviewers = [
-                dev
-                for dev in devs
-                if dev.name != dev_name
-                and dev not in fist_available_reviewers
-                and len(dev.review_for) < maximum_review_times
-            ]
-            selected_reviewers = fist_available_reviewers + random.sample(
-                second_available_reviewers,
-                reviewer_number - len(fist_available_reviewers),
+        if len(first_available_reviewers) >= reviewer_number:
+            return random.sample(
+                first_available_reviewers, reviewer_number
             )
 
+        second_available_reviewers = [
+            dev
+            for dev in devs
+            if dev.name != dev_name
+            and dev not in first_available_reviewers
+            and len(dev.review_for) < maximum_review_times
+        ]
+        selected_reviewers = first_available_reviewers + random.sample(
+            second_available_reviewers,
+            reviewer_number - len(first_available_reviewers),
+        )
         return selected_reviewers
 
     # To process devs with preferable_reviewers first.
@@ -149,8 +149,6 @@ if __name__ == "__main__":
     try:
         developers = load_developers_from_sheet()
         allocate_reviewers(developers)
-        # printer.pprint("Allocating results:")
-        # printer.pprint(developers)
         write_reviewers_to_sheet(developers)
     except Exception as exc:
         write_exception_to_sheet(str(exc))
