@@ -100,6 +100,19 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         def selectable_number_getter() -> int:
             return max(developer.reviewer_number - len(chosen_reviewer_names), 0)
 
+        def experienced_reviewer_number_getter() -> int:
+            experienced_reviewer_chosen = next(
+                (
+                    name
+                    for name in chosen_reviewer_names
+                    if name in EXPERIENCED_DEV_NAMES
+                ),
+                None,
+            )
+            if experienced_reviewer_chosen:
+                return 0
+            return 1
+
         def available_names_filter(names: Set[str]) -> Set[str]:
             return set([name for name in names if name not in chosen_reviewer_names])
 
@@ -108,7 +121,10 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 names=developer.preferable_reviewer_names,
                 number_getter=selectable_number_getter,
             ),
-            SelectableConfigure(names=EXPERIENCED_DEV_NAMES, number_getter=lambda: 1),
+            SelectableConfigure(
+                names=EXPERIENCED_DEV_NAMES,
+                number_getter=experienced_reviewer_number_getter,
+            ),
             SelectableConfigure(
                 names=set([dev.name for dev in devs]),
                 number_getter=selectable_number_getter,
