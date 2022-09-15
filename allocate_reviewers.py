@@ -2,7 +2,7 @@ import os
 import random
 import gspread
 from dotenv import load_dotenv, find_dotenv
-from typing import List, Set
+from typing import List, Set, Callable
 from datetime import datetime
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -30,6 +30,12 @@ class Developer:
     preferable_reviewer_names: Set[str]
     reviewer_names: Set[str] = field(default_factory=set)
     review_for: Set[str] = field(default_factory=set)
+
+
+@dataclass
+class SelectableConfigure:
+    names: Set[str]
+    number_getter: Callable[[], int]
 
 
 @contextmanager
@@ -68,66 +74,58 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     """
 
     def shuffle_and_get_the_most_available_names_for(
-        dev_name, available_names, number_of_names
-    ):
-        """
-        Parameters:
-            dev_name (str): Name of the developer
-            available_names (Set[str]): List of available names
-            number_of_names (int): Number of names to get
-        Returns:
-            (List[str]): A list of reviewer names for the developer from available names.
-        """
+        dev_name: str, available_names: Set[str], number_of_names: int
+    ) -> List[str]:
         if number_of_names == 0:
             return []
 
-        selectable_names = [name for name in available_names if name and name != dev_name]
-        if 0 == len(selectable_names) <= number_of_names:
-            return selectable_names
+        names = [name for name in available_names if name and name != dev_name]
+        if 0 == len(names) <= number_of_names:
+            return names
 
-        random.shuffle(selectable_names)
-        selectable_names.sort(
+        random.shuffle(names)
+        names.sort(
             key=lambda name: len(
                 next(dev for dev in devs if dev.name == name).review_for
             ),
         )
 
-        return selectable_names[0:number_of_names]
+        return names[0:number_of_names]
 
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
-    for dev in devs:
-        reviewer_number = dev.reviewer_number
-        preferable_reviewer_names = dev.preferable_reviewer_names.copy()
+    for developer in devs:
         chosen_reviewer_names = set()
 
-        chosen_names = shuffle_and_get_the_most_available_names_for(
-            dev.name, preferable_reviewer_names, reviewer_number
-        )
-        chosen_reviewer_names.update(chosen_names)
-        reviewer_number = max(reviewer_number - len(chosen_names), 0)
+        def selectable_number_getter() -> int:
+            return max(developer.reviewer_number - len(chosen_reviewer_names), 0)
 
-        prior_names = [
-            name for name in EXPERIENCED_DEV_NAMES if name not in chosen_reviewer_names
-        ]
-        chosen_names = shuffle_and_get_the_most_available_names_for(
-            dev.name, prior_names, 1
-        )
-        chosen_reviewer_names.update(chosen_names)
-        reviewer_number = max(reviewer_number - len(chosen_names), 0)
+        def available_names_filter(names: Set[str]) -> Set[str]:
+            return set([name for name in names if name not in chosen_reviewer_names])
 
-        available_reviewer_names = [
-            dev.name for dev in devs if dev.name not in chosen_reviewer_names
+        configures = [
+            SelectableConfigure(
+                names=developer.preferable_reviewer_names,
+                number_getter=selectable_number_getter,
+            ),
+            SelectableConfigure(names=EXPERIENCED_DEV_NAMES, number_getter=lambda: 1),
+            SelectableConfigure(
+                names=set([dev.name for dev in devs]),
+                number_getter=selectable_number_getter,
+            ),
         ]
-        chosen_names = shuffle_and_get_the_most_available_names_for(
-            dev.name, available_reviewer_names, reviewer_number
-        )
-        chosen_reviewer_names.update(chosen_names)
+        for configure in configures:
+            selectable_names = available_names_filter(configure.names)
+            selectable_number = configure.number_getter()
+            chosen_names = shuffle_and_get_the_most_available_names_for(
+                developer.name, selectable_names, selectable_number
+            )
+            chosen_reviewer_names.update(chosen_names)
 
         reviewers = [dev for dev in devs if dev.name in chosen_reviewer_names]
         for reviewer in reviewers:
-            dev.reviewer_names.add(reviewer.name)
-            reviewer.review_for.add(dev.name)
+            developer.reviewer_names.add(reviewer.name)
+            reviewer.review_for.add(developer.name)
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
