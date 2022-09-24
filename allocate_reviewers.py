@@ -5,17 +5,17 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, List, Set
 
-import gspread
+import gspread  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from gspread import Worksheet
-from oauth2client.service_account import ServiceAccountCredentials
+from oauth2client.service_account import ServiceAccountCredentials  # type: ignore
 
 load_dotenv(find_dotenv())
 
 CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
 SHEET_NAME = os.environ.get("SHEET_NAME")
-MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER"))
-EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES").split(", "))
+MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER", "1"))
+EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
 
 DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
@@ -97,7 +97,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
     for developer in devs:
-        chosen_reviewer_names = set()
+        chosen_reviewer_names: Set[str] = set()
 
         def selectable_number_getter() -> int:
             return max(developer.reviewer_number - len(chosen_reviewer_names), 0)
