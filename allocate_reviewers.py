@@ -84,6 +84,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             return names
 
         random.shuffle(names)
+        # To select names that have the least assigned reviewing.
         names.sort(
             key=lambda name: len(
                 next(dev for dev in devs if dev.name == name).review_for
@@ -113,9 +114,6 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 return 0
             return 1
 
-        def available_names_filter(names: Set[str]) -> Set[str]:
-            return set([name for name in names if name not in chosen_reviewer_names])
-
         configures = [
             SelectableConfigure(
                 names=developer.preferable_reviewer_names,
@@ -130,8 +128,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 number_getter=selectable_number_getter,
             ),
         ]
+
         for configure in configures:
-            selectable_names = available_names_filter(configure.names)
+            selectable_names = set(
+                [name for name in configure.names if name not in chosen_reviewer_names]
+            )
             selectable_number = configure.number_getter()
             chosen_names = shuffle_and_get_the_most_available_names_for(
                 developer.name, selectable_names, selectable_number
