@@ -67,32 +67,32 @@ def load_developers_from_sheet() -> List[Developer]:
     return input_developers
 
 
+def shuffle_and_get_the_most_available_names_for(
+    dev_name: str, available_names: Set[str], number_of_names: int, devs
+) -> List[str]:
+    if number_of_names == 0:
+        return []
+
+    names = [name for name in available_names if name and name != dev_name]
+    if 0 == len(names) <= number_of_names:
+        return names
+
+    random.shuffle(names)
+    # To select names that have the least assigned reviewing.
+    names.sort(
+        key=lambda name: len(
+            next(dev for dev in devs if dev.name == name).review_for
+        ),
+    )
+
+    return names[0:number_of_names]
+
+
 def allocate_reviewers(devs: List[Developer]) -> None:
     """
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
-
-    def shuffle_and_get_the_most_available_names_for(
-        dev_name: str, available_names: Set[str], number_of_names: int
-    ) -> List[str]:
-        if number_of_names == 0:
-            return []
-
-        names = [name for name in available_names if name and name != dev_name]
-        if 0 == len(names) <= number_of_names:
-            return names
-
-        random.shuffle(names)
-        # To select names that have the least assigned reviewing.
-        names.sort(
-            key=lambda name: len(
-                next(dev for dev in devs if dev.name == name).review_for
-            ),
-        )
-
-        return names[0:number_of_names]
-
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
     for developer in devs:
@@ -135,7 +135,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             )
             selectable_number = configure.number_getter()
             chosen_names = shuffle_and_get_the_most_available_names_for(
-                developer.name, selectable_names, selectable_number
+                developer.name, selectable_names, selectable_number, devs
             )
             chosen_reviewer_names.update(chosen_names)
 
