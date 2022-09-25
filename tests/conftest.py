@@ -1,6 +1,9 @@
+from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
+
+from allocate_reviewers import Developer
 
 SHEET = [
     {
@@ -30,6 +33,14 @@ SHEET = [
     },
 ]
 
+DEVS = [
+    Developer(name="A", reviewer_number=1, preferable_reviewer_names=set(["B", "C"])),
+    Developer(name="B", reviewer_number=2, preferable_reviewer_names=set()),
+    Developer(name="C", reviewer_number=3, preferable_reviewer_names=set()),
+    Developer(name="D", reviewer_number=3, preferable_reviewer_names=set()),
+    Developer(name="E", reviewer_number=5, preferable_reviewer_names=set()),
+]
+
 
 @pytest.fixture(scope="function")
 def mocked_sheet():
@@ -42,3 +53,9 @@ def mocked_sheet():
 def mocked_sheet_data(mocked_sheet):
     mocked_sheet.get_all_records.return_value = SHEET
     yield SHEET
+
+
+@pytest.fixture(scope="function")
+def mocked_devs():
+    devs = deepcopy(DEVS)
+    yield devs
