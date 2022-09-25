@@ -5,16 +5,16 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, List, Set
 
-import gspread  # type: ignore
+import gspread
 from dotenv import find_dotenv, load_dotenv
 from gspread import Worksheet
-from oauth2client.service_account import ServiceAccountCredentials  # type: ignore
+from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv(find_dotenv())
 
 CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
 SHEET_NAME = os.environ.get("SHEET_NAME")
-MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER", "1"))
+MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER") or "1")
 EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
 
 DRIVE_SCOPE = [
@@ -58,8 +58,8 @@ def load_developers_from_sheet() -> List[Developer]:
     for record in records:
         developer = Developer(
             name=record["Developer"],
-            reviewer_number=record["Reviewer Number"] or MINIMUM_REVIEWER_NUMBER,
-            preferable_reviewer_names=set(record["Preferable Reviewers"].split(", "))
+            reviewer_number=int(record["Reviewer Number"] or MINIMUM_REVIEWER_NUMBER),
+            preferable_reviewer_names=set((record["Preferable Reviewers"]).split(", "))
             if record["Preferable Reviewers"]
             else set(),
         )
@@ -81,9 +81,7 @@ def shuffle_and_get_the_most_available_names_for(
     random.shuffle(names)
     # To select names that have the least assigned reviewing.
     names.sort(
-        key=lambda name: len(
-            next(dev for dev in devs if dev.name == name).review_for
-        ),
+        key=lambda name: len(next(dev for dev in devs if dev.name == name).review_for),
     )
 
     return names[0:number_of_names]
@@ -94,26 +92,32 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
+    all_dev_names = set([dev.name for dev in devs])
+    valid_experienced_dev_names = set(
+        [name for name in EXPERIENCED_DEV_NAMES if name in all_dev_names]
+    )
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
+
     for developer in devs:
         chosen_reviewer_names: Set[str] = set()
+        reviewer_number = min(developer.reviewer_number, len(all_dev_names) - 1)
 
         def selectable_number_getter() -> int:
-            return max(developer.reviewer_number - len(chosen_reviewer_names), 0)
+            return max(reviewer_number - len(chosen_reviewer_names), 0)
 
         def experienced_reviewer_number_getter() -> int:
             experienced_reviewer_chosen = next(
                 (
                     name
                     for name in chosen_reviewer_names
-                    if name in EXPERIENCED_DEV_NAMES
+                    if name in valid_experienced_dev_names
                 ),
                 None,
             )
             if experienced_reviewer_chosen:
                 return 0
-            return 1
+            return min(1, reviewer_number)
 
         configures = [
             SelectableConfigure(
@@ -121,11 +125,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 number_getter=selectable_number_getter,
             ),
             SelectableConfigure(
-                names=EXPERIENCED_DEV_NAMES,
+                names=valid_experienced_dev_names,
                 number_getter=experienced_reviewer_number_getter,
             ),
             SelectableConfigure(
-                names=set([dev.name for dev in devs]),
+                names=all_dev_names,
                 number_getter=selectable_number_getter,
             ),
         ]
@@ -155,7 +159,7 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
         for record in records:
             developer = next(dev for dev in devs if dev.name == record["Developer"])
-            reviewer_names = ", ".join(developer.reviewer_names)
+            reviewer_names = ", ".join(sorted(developer.reviewer_names))
             new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
 
@@ -174,4 +178,4 @@ if __name__ == "__main__":
         allocate_reviewers(developers)
         write_reviewers_to_sheet(developers)
     except Exception as exc:
-        write_exception_to_sheet(str(exc))
+        write_exception_to_sheet(str(exc) or str(type(exc)))
