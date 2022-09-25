@@ -12,8 +12,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv(find_dotenv())
 
-CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
-SHEET_NAME = os.environ.get("SHEET_NAME")
 MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER") or "1")
 EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
 
@@ -41,6 +39,9 @@ class SelectableConfigure:
 
 @contextmanager
 def get_remote_sheet() -> Worksheet:
+    CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
+    SHEET_NAME = os.environ.get("SHEET_NAME")
+
     credential = ServiceAccountCredentials.from_json_keyfile_name(
         CREDENTIAL_FILE, DRIVE_SCOPE
     )
@@ -79,7 +80,7 @@ def shuffle_and_get_the_most_available_names_for(
         return names
 
     random.shuffle(names)
-    # To select names that have the least assigned reviewing.
+    # To select names that have the least assigned times.
     names.sort(
         key=lambda name: len(next(dev for dev in devs if dev.name == name).review_for),
     )
@@ -92,10 +93,13 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
+    EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
+
     all_dev_names = set([dev.name for dev in devs])
     valid_experienced_dev_names = set(
         [name for name in EXPERIENCED_DEV_NAMES if name in all_dev_names]
     )
+
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
 
@@ -117,7 +121,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             )
             if experienced_reviewer_chosen:
                 return 0
-            return min(1, reviewer_number)
+            return min(1, reviewer_number - len(chosen_reviewer_names))
 
         configures = [
             SelectableConfigure(
@@ -127,6 +131,16 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             SelectableConfigure(
                 names=valid_experienced_dev_names,
                 number_getter=experienced_reviewer_number_getter,
+            ),
+            SelectableConfigure(
+                names=set(
+                    [
+                        name
+                        for name in all_dev_names
+                        if name not in valid_experienced_dev_names
+                    ]
+                ),
+                number_getter=selectable_number_getter,
             ),
             SelectableConfigure(
                 names=all_dev_names,
