@@ -1,3 +1,6 @@
 .idea/
 client_key.json
 .env
+.mypy_cache
+.pytest_cache
+__pycache__/
