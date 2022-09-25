@@ -1,39 +1,65 @@
-from copy import deepcopy
+import os
 from dataclasses import asdict
+from unittest.mock import Mock, patch
 
 from freezegun import freeze_time
+from gspread import Spreadsheet
+from oauth2client.service_account import ServiceAccountCredentials
 
-from allocate_reviewers import (Developer, load_developers_from_sheet,
+from allocate_reviewers import (DRIVE_SCOPE, get_remote_sheet,
+                                load_developers_from_sheet,
                                 write_exception_to_sheet,
                                 write_reviewers_to_sheet)
 from tests.conftest import SHEET
-
-EXPECTED_DEVS = [
-    Developer(name="A", reviewer_number=1, preferable_reviewer_names=set(["B", "C"])),
-    Developer(name="B", reviewer_number=2, preferable_reviewer_names=set()),
-    Developer(name="C", reviewer_number=3, preferable_reviewer_names=set()),
-    Developer(name="D", reviewer_number=3, preferable_reviewer_names=set()),
-    Developer(name="E", reviewer_number=5, preferable_reviewer_names=set()),
-]
+from tests.utils import mutate_devs
 
 
-def test_load_developers_from_sheet(mocked_sheet_data) -> None:
+@patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAME": "S"})
+@patch("allocate_reviewers.ServiceAccountCredentials")
+@patch("allocate_reviewers.gspread")
+def test_get_remote_sheet(mocked_gspread, mocked_service_account) -> None:
+    mocked_credential = Mock(spec=ServiceAccountCredentials)
+    mocked_service_account.from_json_keyfile_name.return_value = mocked_credential
+
+    mocked_client = Mock()
+    mocked_gspread.authorize.return_value = mocked_client
+
+    mocked_spreadsheet = Mock(spec=Spreadsheet)
+    mocked_client.open.return_value = mocked_spreadsheet
+
+    with get_remote_sheet() as sheet:
+        mocked_service_account.from_json_keyfile_name.assert_called_once_with(
+            "credential_file.json", DRIVE_SCOPE
+        )
+        mocked_gspread.authorize.assert_called_once_with(mocked_credential)
+
+        mocked_client.open.assert_called_once_with("S")
+        assert sheet == mocked_spreadsheet.sheet1
+
+        mocked_client.session.close.assert_not_called()
+
+    mocked_client.session.close.assert_called_once()
+
+
+def test_load_developers_from_sheet(mocked_sheet_data, mocked_devs) -> None:
 
     devs = load_developers_from_sheet()
     assert len(devs) == 5
     for idx, dev in enumerate(devs):
-        assert asdict(dev) == asdict(EXPECTED_DEVS[idx])
+        assert asdict(dev) == asdict(mocked_devs[idx])
 
 
 @freeze_time("2022-09-25 12:12:12")
-def test_write_reviewers_to_sheet(mocked_sheet) -> None:
-    devs = deepcopy(EXPECTED_DEVS)
-    devs[1].reviewer_names = set(["C", "D"])
-    devs[4].reviewer_names = set(["C", "A"])
+def test_write_reviewers_to_sheet(mocked_sheet, mocked_devs) -> None:
+    DEV_REVIEWERS_MAPPER = {
+        "B": set(["C", "D"]),
+        "E": set(["C", "A"]),
+    }
+    mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
     new_column = [["25-09-2022", "", "C, D", "", "", "A, C"]]
 
     mocked_sheet.get_all_records.return_value = SHEET
-    write_reviewers_to_sheet(devs)
+    write_reviewers_to_sheet(mocked_devs)
 
     mocked_sheet.insert_cols.assert_called_once_with(new_column, 4)
 
