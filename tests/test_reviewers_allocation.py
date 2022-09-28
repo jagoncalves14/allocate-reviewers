@@ -63,6 +63,6 @@ def test_allocate_reviewers(mocked_devs) -> None:
         assert len(reviewer_names) == expected_reviewer_number
         assert dev.name not in reviewer_names
         if dev.name == "E":
-            return
+            continue
 
         assert "E" in reviewer_names
