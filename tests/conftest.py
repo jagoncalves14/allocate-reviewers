@@ -1,7 +1,9 @@
 from copy import deepcopy
+from typing import Dict, Generator, List
 from unittest.mock import patch
 
 import pytest
+from gspread import Worksheet
 
 from allocate_reviewers import Developer
 
@@ -43,19 +45,21 @@ DEVS = [
 
 
 @pytest.fixture(scope="function")
-def mocked_sheet():
+def mocked_sheet() -> Generator[Worksheet, None, None]:
     with patch("allocate_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             yield mocked_sheet
 
 
 @pytest.fixture(scope="function")
-def mocked_sheet_data(mocked_sheet):
+def mocked_sheet_data(
+    mocked_sheet: Worksheet,
+) -> Generator[List[Dict[str, str]], None, None]:
     mocked_sheet.get_all_records.return_value = SHEET
     yield SHEET
 
 
 @pytest.fixture(scope="function")
-def mocked_devs():
+def mocked_devs() -> Generator[List[Developer], None, None]:
     devs = deepcopy(DEVS)
     yield devs

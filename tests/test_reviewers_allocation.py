@@ -4,8 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from allocate_reviewers import (allocate_reviewers,
-                                shuffle_and_get_the_most_available_names_for)
+from allocate_reviewers import (
+    Developer,
+    allocate_reviewers,
+    shuffle_and_get_the_most_available_names_for,
+)
 from tests.conftest import DEVS
 from tests.utils import mutate_devs
 
@@ -30,7 +33,7 @@ def test_shuffle_and_get_the_most_available_names_for(
     available_names: Set[str],
     number_of_names: int,
     expected: List[str],
-    mocked_devs,
+    mocked_devs: List[Developer],
 ) -> None:
     DEV_REVIEW_LIST_MAPPER = {
         "B": set(["C", "D"]),
@@ -48,7 +51,7 @@ def test_shuffle_and_get_the_most_available_names_for(
 
 
 @patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "E"})
-def test_allocate_reviewers(mocked_devs) -> None:
+def test_allocate_reviewers(mocked_devs: List[Developer]) -> None:
     allocate_reviewers(mocked_devs)
 
     # By preference:

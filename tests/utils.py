@@ -1,4 +1,13 @@
-def mutate_devs(devs, attribute_name, dev_attribute_value_mapper):
+from typing import Any, Dict, List
+
+from allocate_reviewers import Developer
+
+
+def mutate_devs(
+    devs: List[Developer],
+    attribute_name: str,
+    dev_attribute_value_mapper: Dict[str, Any],
+):
     dev_keys = dev_attribute_value_mapper.keys()
     for dev in devs:
         if dev.name in dev_keys:

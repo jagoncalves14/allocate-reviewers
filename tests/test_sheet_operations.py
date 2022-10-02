@@ -1,15 +1,20 @@
 import os
 from dataclasses import asdict
+from typing import Dict, List
 from unittest.mock import Mock, patch
 
 from freezegun import freeze_time
-from gspread import Spreadsheet
+from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-from allocate_reviewers import (DRIVE_SCOPE, get_remote_sheet,
-                                load_developers_from_sheet,
-                                write_exception_to_sheet,
-                                write_reviewers_to_sheet)
+from allocate_reviewers import (
+    DRIVE_SCOPE,
+    Developer,
+    get_remote_sheet,
+    load_developers_from_sheet,
+    write_exception_to_sheet,
+    write_reviewers_to_sheet,
+)
 from tests.conftest import SHEET
 from tests.utils import mutate_devs
 
@@ -17,7 +22,7 @@ from tests.utils import mutate_devs
 @patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAME": "S"})
 @patch("allocate_reviewers.ServiceAccountCredentials")
 @patch("allocate_reviewers.gspread")
-def test_get_remote_sheet(mocked_gspread, mocked_service_account) -> None:
+def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) -> None:
     mocked_credential = Mock(spec=ServiceAccountCredentials)
     mocked_service_account.from_json_keyfile_name.return_value = mocked_credential
 
@@ -41,7 +46,9 @@ def test_get_remote_sheet(mocked_gspread, mocked_service_account) -> None:
     mocked_client.session.close.assert_called_once()
 
 
-def test_load_developers_from_sheet(mocked_sheet_data, mocked_devs) -> None:
+def test_load_developers_from_sheet(
+    mocked_sheet_data: List[Dict[str, str]], mocked_devs: List[Developer]
+) -> None:
 
     devs = load_developers_from_sheet()
     assert len(devs) == 5
@@ -50,7 +57,9 @@ def test_load_developers_from_sheet(mocked_sheet_data, mocked_devs) -> None:
 
 
 @freeze_time("2022-09-25 12:12:12")
-def test_write_reviewers_to_sheet(mocked_sheet, mocked_devs) -> None:
+def test_write_reviewers_to_sheet(
+    mocked_sheet: Worksheet, mocked_devs: List[Developer]
+) -> None:
     DEV_REVIEWERS_MAPPER = {
         "B": set(["C", "D"]),
         "E": set(["C", "A"]),
@@ -65,7 +74,7 @@ def test_write_reviewers_to_sheet(mocked_sheet, mocked_devs) -> None:
 
 
 @freeze_time("2022-09-30 12:12:12")
-def test_write_exception_to_sheet(mocked_sheet) -> None:
+def test_write_exception_to_sheet(mocked_sheet: Worksheet) -> None:
     new_column = [["Exception 30-09-2022", "Awesome error!"]]
 
     write_exception_to_sheet("Awesome error!")
