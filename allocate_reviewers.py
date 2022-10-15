@@ -12,7 +12,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv(find_dotenv())
 
-MINIMUM_REVIEWER_NUMBER = int(os.environ.get("MINIMUM_REVIEWER_NUMBER") or "1")
+DEFAULT_REVIEWER_NUMBER = int(os.environ.get("DEFAULT_REVIEWER_NUMBER") or "1")
 EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
 
 DRIVE_SCOPE = [
@@ -59,7 +59,7 @@ def load_developers_from_sheet() -> List[Developer]:
     for record in records:
         developer = Developer(
             name=record["Developer"],
-            reviewer_number=int(record["Reviewer Number"] or MINIMUM_REVIEWER_NUMBER),
+            reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
             preferable_reviewer_names=set((record["Preferable Reviewers"]).split(", "))
             if record["Preferable Reviewers"]
             else set(),
