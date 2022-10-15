@@ -1,5 +1,5 @@
 # Functionality
-A simple script to assign developers to review each other code. The assignment is done randomly.
+A simple script to assign developers to review each others' code. The assignment is done randomly.
 Nonetheless, it is possible to control the preferable reviewers for each specific developer.
 
 The script will read the configuration from a Google sheet, assign reviewers for developers in the list,
@@ -7,7 +7,7 @@ and write back the result to the Google sheet. Developers can check the name of 
 the link to the Google sheet.
 
 A developer from the team should set up a cron job to execute the script periodically to make sure the assignment is 
-rotated so that all developers have a chance to read each other's code.
+rotated so that all developers have a chance to read each others' code.
 
 # Configurable parameters
 
