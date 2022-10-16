@@ -55,18 +55,18 @@ def load_developers_from_sheet() -> List[Developer]:
     with get_remote_sheet() as sheet:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
 
-    input_developers = list()
-    for record in records:
-        developer = Developer(
+    input_developers = map(
+        lambda record: Developer(
             name=record["Developer"],
             reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
             preferable_reviewer_names=set((record["Preferable Reviewers"]).split(", "))
             if record["Preferable Reviewers"]
             else set(),
-        )
-        input_developers.append(developer)
+        ),
+        records,
+    )
 
-    return input_developers
+    return list(input_developers)
 
 
 def shuffle_and_get_the_most_available_names_for(
@@ -95,9 +95,9 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     """
     EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
 
-    all_dev_names = set([dev.name for dev in devs])
+    all_dev_names = set((dev.name for dev in devs))
     valid_experienced_dev_names = set(
-        [name for name in EXPERIENCED_DEV_NAMES if name in all_dev_names]
+        (name for name in EXPERIENCED_DEV_NAMES if name in all_dev_names)
     )
 
     # To process devs with preferable_reviewer_names first.
@@ -134,11 +134,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             ),
             SelectableConfigure(
                 names=set(
-                    [
+                    (
                         name
                         for name in all_dev_names
                         if name not in valid_experienced_dev_names
-                    ]
+                    )
                 ),
                 number_getter=selectable_number_getter,
             ),
@@ -150,7 +150,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         for configure in configures:
             selectable_names = set(
-                [name for name in configure.names if name not in chosen_reviewer_names]
+                (name for name in configure.names if name not in chosen_reviewer_names)
             )
             selectable_number = configure.number_getter()
             chosen_names = shuffle_and_get_the_most_available_names_for(
@@ -158,7 +158,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             )
             chosen_reviewer_names.update(chosen_names)
 
-        reviewers = [dev for dev in devs if dev.name in chosen_reviewer_names]
+        reviewers = (dev for dev in devs if dev.name in chosen_reviewer_names)
         for reviewer in reviewers:
             developer.reviewer_names.add(reviewer.name)
             reviewer.review_for.add(developer.name)

@@ -16,10 +16,10 @@ from tests.utils import mutate_devs
 @pytest.mark.parametrize(
     "dev_name,available_names,number_of_names,expected",
     [
-        ("A", set(["A", "B"]), 0, []),
-        ("A", set(["A"]), 1, []),
-        ("A", set(["A", "B"]), 2, ["B"]),
-        ("A", [dev.name for dev in DEVS], 2, ["E", "D"]),
+        ("A", set(("A", "B")), 0, []),
+        ("A", set("A"), 1, []),
+        ("A", set(("A", "B")), 2, ["B"]),
+        ("A", set(dev.name for dev in DEVS), 2, ["E", "D"]),
     ],
     ids=[
         "Number of names is 0",
@@ -36,9 +36,9 @@ def test_shuffle_and_get_the_most_available_names_for(
     mocked_devs: List[Developer],
 ) -> None:
     DEV_REVIEW_LIST_MAPPER = {
-        "B": set(["C", "D"]),
-        "C": set(["A", "B"]),
-        "D": set(["E"]),
+        "B": set(("C", "D")),
+        "C": set(("A", "B")),
+        "D": set("E"),
     }
     mutate_devs(mocked_devs, "review_for", DEV_REVIEW_LIST_MAPPER)
 

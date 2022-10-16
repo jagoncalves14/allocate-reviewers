@@ -61,8 +61,8 @@ def test_write_reviewers_to_sheet(
     mocked_sheet: Worksheet, mocked_devs: List[Developer]
 ) -> None:
     DEV_REVIEWERS_MAPPER = {
-        "B": set(["C", "D"]),
-        "E": set(["C", "A"]),
+        "B": set(("C", "D")),
+        "E": set(("C", "A")),
     }
     mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
     new_column = [["25-09-2022", "", "C, D", "", "", "A, C"]]
