@@ -121,7 +121,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             )
             if experienced_reviewer_chosen:
                 return 0
-            return min(1, reviewer_number - len(chosen_reviewer_names))
+            return max(min(1, reviewer_number - len(chosen_reviewer_names)), 0)
 
         configures = [
             SelectableConfigure(
