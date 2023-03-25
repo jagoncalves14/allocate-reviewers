@@ -1,5 +1,6 @@
 import os
 import random
+import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -69,13 +70,13 @@ def load_developers_from_sheet() -> List[Developer]:
     return list(input_developers)
 
 
-def shuffle_and_get_the_most_available_names_for(
-    dev_name: str, available_names: Set[str], number_of_names: int, devs
+def shuffle_and_get_the_most_available_names(
+    available_names: Set[str], number_of_names: int, devs
 ) -> List[str]:
     if number_of_names == 0:
         return []
+    names = list(available_names)
 
-    names = [name for name in available_names if name and name != dev_name]
     if 0 == len(names) <= number_of_names:
         return names
 
@@ -150,11 +151,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         for configure in configures:
             selectable_names = set(
-                (name for name in configure.names if name not in chosen_reviewer_names)
+                (name for name in configure.names if name not in [developer.name, *chosen_reviewer_names])
             )
             selectable_number = configure.number_getter()
-            chosen_names = shuffle_and_get_the_most_available_names_for(
-                developer.name, selectable_names, selectable_number, devs
+            chosen_names = shuffle_and_get_the_most_available_names(
+                selectable_names, selectable_number, devs
             )
             chosen_reviewer_names.update(chosen_names)
 
@@ -192,4 +193,5 @@ if __name__ == "__main__":
         allocate_reviewers(developers)
         write_reviewers_to_sheet(developers)
     except Exception as exc:
+        traceback.print_exc()
         write_exception_to_sheet(str(exc) or str(type(exc)))
