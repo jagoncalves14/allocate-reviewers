@@ -42,5 +42,7 @@ to the that file.
 3. Create a sheet for the script to work on.
 4. Copy the template in R.xlsx to the created sheet, and fill in info.
 5. Copy the template in .env_template to .env, and fill in info.
-6. Using poetry to spawn a virtual env and execute "python allocate_reviewers.py"  
-7. Optionally you can set up a cron job to do the job periodically using the template in "execute.sh"
+6. Use poetry to spawn a virtual env 
+7. Install necessary packages by "poetry install"  
+8. Start allocating reviewers by "python allocate_reviewers.py"  
+9. Optionally you can set up a cron job to do the job periodically using the template in "execute.sh"
