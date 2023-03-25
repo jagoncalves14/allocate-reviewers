@@ -6,3 +6,4 @@ client_key.json
 __pycache__/
 .coverage
 htmlcov
+.DS_Store
