@@ -9,7 +9,7 @@ class Developer:
     preferable_reviewer_names: Set[str]
     reviewer_names: Set[str] = field(default_factory=set)
     review_for: Set[str] = field(default_factory=set)
-    order: int = field(default=1)
+    order: int = field(default=0)
 
 
 @dataclass
