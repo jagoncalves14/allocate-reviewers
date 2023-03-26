@@ -27,5 +27,5 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.autoflake]
-check = true
+check = false
 imports = ["django", "requests", "urllib3"]

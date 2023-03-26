@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from gspread import Worksheet
 
-from allocate_reviewers import Developer
+from data_types import Developer
 
 SHEET = [
     {

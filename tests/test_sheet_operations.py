@@ -8,13 +8,13 @@ from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
 from allocate_reviewers import (
-    DRIVE_SCOPE,
-    Developer,
     get_remote_sheet,
     load_developers_from_sheet,
     write_exception_to_sheet,
     write_reviewers_to_sheet,
 )
+from data_types import Developer
+from env_constants import DRIVE_SCOPE
 from tests.conftest import SHEET
 from tests.utils import mutate_devs
 

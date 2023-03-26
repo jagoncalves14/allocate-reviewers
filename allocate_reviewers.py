@@ -2,40 +2,18 @@ import os
 import random
 import traceback
 from contextlib import contextmanager
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, List, Set
+from typing import List, Set
 
 import gspread
 from dotenv import find_dotenv, load_dotenv
 from gspread import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
+from data_types import Developer, SelectableConfigure
+from env_constants import DEFAULT_REVIEWER_NUMBER, DRIVE_SCOPE, EXPECTED_HEADERS
+
 load_dotenv(find_dotenv())
-
-DEFAULT_REVIEWER_NUMBER = int(os.environ.get("DEFAULT_REVIEWER_NUMBER") or "1")
-EXPERIENCED_DEV_NAMES = set(os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", "))
-
-DRIVE_SCOPE = [
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file",
-]
-EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
-
-
-@dataclass
-class Developer:
-    name: str
-    reviewer_number: int
-    preferable_reviewer_names: Set[str]
-    reviewer_names: Set[str] = field(default_factory=set)
-    review_for: Set[str] = field(default_factory=set)
-
-
-@dataclass
-class SelectableConfigure:
-    names: Set[str]
-    number_getter: Callable[[], int]
 
 
 @contextmanager
