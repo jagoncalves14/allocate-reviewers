@@ -44,7 +44,7 @@ def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
     order_of_previous_reviewer_names_of_first_dev = list(
         map(
             lambda reviewer_name: next(
-                dev_ for dev_ in devs if dev.name == reviewer_name
+                dev_ for dev_ in devs if dev_.name == reviewer_name
             ).order,
             previous_reviewer_names_of_first_dev,
         )
