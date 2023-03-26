@@ -151,7 +151,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         for configure in configures:
             selectable_names = set(
-                (name for name in configure.names if name not in [developer.name, *chosen_reviewer_names])
+                (
+                    name
+                    for name in configure.names
+                    if name not in [developer.name, *chosen_reviewer_names]
+                )
             )
             selectable_number = configure.number_getter()
             chosen_names = shuffle_and_get_the_most_available_names(
