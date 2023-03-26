@@ -7,29 +7,24 @@ import pytest
 from allocate_reviewers import (
     Developer,
     allocate_reviewers,
-    shuffle_and_get_the_most_available_names_for,
+    shuffle_and_get_the_most_available_names,
 )
 from tests.conftest import DEVS
 from tests.utils import mutate_devs
 
 
 @pytest.mark.parametrize(
-    "dev_name,available_names,number_of_names,expected",
+    "available_names,number_of_names,expected",
     [
-        ("A", set(("A", "B")), 0, []),
-        ("A", set("A"), 1, []),
-        ("A", set(("A", "B")), 2, ["B"]),
-        ("A", set(dev.name for dev in DEVS), 2, ["E", "D"]),
+        (set(("A", "B")), 0, []),
+        (set(dev.name for dev in DEVS), 2, ["A", "E"]),
     ],
     ids=[
         "Number of names is 0",
-        "No selectable names",
-        "Only 1 selectable names",
         "Based on assigned times",
     ],
 )
-def test_shuffle_and_get_the_most_available_names_for(
-    dev_name: str,
+def test_shuffle_and_get_the_most_available_names(
     available_names: Set[str],
     number_of_names: int,
     expected: List[str],
@@ -43,8 +38,8 @@ def test_shuffle_and_get_the_most_available_names_for(
     mutate_devs(mocked_devs, "review_for", DEV_REVIEW_LIST_MAPPER)
 
     assert (
-        shuffle_and_get_the_most_available_names_for(
-            dev_name, available_names, number_of_names, mocked_devs
+        shuffle_and_get_the_most_available_names(
+            available_names, number_of_names, mocked_devs
         )
         == expected
     )
