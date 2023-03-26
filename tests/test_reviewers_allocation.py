@@ -36,13 +36,10 @@ def test_shuffle_and_get_the_most_available_names(
         "D": set("E"),
     }
     mutate_devs(mocked_devs, "review_for", DEV_REVIEW_LIST_MAPPER)
-
-    assert (
-        shuffle_and_get_the_most_available_names(
-            available_names, number_of_names, mocked_devs
-        )
-        == expected
+    chosen_names = shuffle_and_get_the_most_available_names(
+        available_names, number_of_names, mocked_devs
     )
+    assert sorted(chosen_names) == sorted(expected)
 
 
 @patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "E"})
