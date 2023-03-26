@@ -1,9 +1,7 @@
 import traceback
 from typing import List
 
-import gspread
 from dotenv import find_dotenv, load_dotenv
-from oauth2client.service_account import ServiceAccountCredentials
 
 from allocate_reviewers import (
     get_remote_sheet,
@@ -27,30 +25,30 @@ def arrange_developers(devs: List[Developer]) -> None:
 def get_previous_allocation() -> dict[str, str]:
     with get_remote_sheet() as sheet:
         developer_names = sheet.col_values(1)
-        previous_allocation = sheet.col_values(len(EXPECTED_HEADERS) + 1)
+        previous_allocation_ = sheet.col_values(len(EXPECTED_HEADERS) + 1)
 
-    if not previous_allocation:
+    if not previous_allocation_:
         return {}
 
     developer_names.pop(0)
-    previous_allocation.pop(0)
-    result = dict(zip(developer_names, previous_allocation))
+    previous_allocation_.pop(0)
+    result = dict(zip(developer_names, previous_allocation_))
     return result
 
 
-def rotate_reviewers(devs: List[Developer], previous_allocation: dict) -> None:
+def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
     """
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
-    devs.sort(key=lambda dev: dev.order, reverse=False)
-    previous_reviewer_names_of_first_dev = previous_allocation.get(
+    devs.sort(key=lambda dev_: dev_.order, reverse=False)
+    previous_reviewer_names_of_first_dev = previous_allocation_.get(
         devs[0].name, ""
     ).split(", ")
     order_of_previous_reviewer_names_of_first_dev = list(
         map(
             lambda reviewer_name: next(
-                dev for dev in devs if dev.name == reviewer_name
+                dev_ for dev_ in devs if dev.name == reviewer_name
             ).order,
             previous_reviewer_names_of_first_dev,
         )

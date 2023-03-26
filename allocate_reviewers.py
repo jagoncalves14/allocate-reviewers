@@ -82,9 +82,9 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
 
-    for developer in devs:
+    for dev in devs:
         chosen_reviewer_names: Set[str] = set()
-        reviewer_number = min(developer.reviewer_number, len(all_dev_names) - 1)
+        reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
 
         def selectable_number_getter() -> int:
             return max(reviewer_number - len(chosen_reviewer_names), 0)
@@ -104,7 +104,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         configures = [
             SelectableConfigure(
-                names=developer.preferable_reviewer_names,
+                names=dev.preferable_reviewer_names,
                 number_getter=selectable_number_getter,
             ),
             SelectableConfigure(
@@ -132,7 +132,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 (
                     name
                     for name in configure.names
-                    if name not in [developer.name, *chosen_reviewer_names]
+                    if name not in [dev.name, *chosen_reviewer_names]
                 )
             )
             selectable_number = configure.number_getter()
@@ -143,8 +143,8 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         reviewers = (dev for dev in devs if dev.name in chosen_reviewer_names)
         for reviewer in reviewers:
-            developer.reviewer_names.add(reviewer.name)
-            reviewer.review_for.add(developer.name)
+            dev.reviewer_names.add(reviewer.name)
+            reviewer.review_for.add(dev.name)
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
