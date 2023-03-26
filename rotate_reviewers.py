@@ -1,8 +1,6 @@
 import traceback
 from typing import List
 
-from dotenv import find_dotenv, load_dotenv
-
 from allocate_reviewers import (
     get_remote_sheet,
     load_developers_from_sheet,
@@ -11,8 +9,6 @@ from allocate_reviewers import (
 )
 from data_types import Developer
 from env_constants import EXPECTED_HEADERS, REVIEWERS_CONFIG_LIST
-
-load_dotenv(find_dotenv())
 
 
 def arrange_developers(devs: List[Developer]) -> None:
