@@ -90,12 +90,12 @@ def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
                     devs[safe_index_].name == dev.name
                     or devs[safe_index_].name in dev.reviewer_names
                 ):
-                    return get_safe_numbers(starting_index, review_number, skip_ + 1)
+                    return get_safe_numbers(skip_ + 1)
 
                 if len(
                     devs[safe_index_].review_for
                 ) >= maximum_assignment and skip_ - current_skip < len(devs):
-                    return get_safe_numbers(starting_index, review_number, skip_ + 1)
+                    return get_safe_numbers(skip_ + 1)
 
                 return safe_index_, index_, skip_
 
