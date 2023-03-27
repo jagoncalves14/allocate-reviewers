@@ -77,7 +77,8 @@ def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
     )
     for dev in devs:
         skip = 0
-        remaining_reviewer_number = min(
+        index = None
+        remaining_reviewer_number = max(
             0, dev.reviewer_number - len(dev.reviewer_names)
         )
         for review_number in range(1, remaining_reviewer_number + 1):
@@ -104,7 +105,8 @@ def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
             dev.reviewer_names.add(reviewer.name)
             reviewer.review_for.add(dev.name)
 
-        starting_index = index - 1
+        if index is not None:
+            starting_index = index - 1
 
 
 if __name__ == "__main__":
