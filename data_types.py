@@ -6,7 +6,7 @@ from typing import Callable, Set
 class Developer:
     name: str
     reviewer_number: int
-    preferable_reviewer_names: Set[str]
+    preferable_reviewer_names: Set[str] = field(default_factory=set)
     reviewer_names: Set[str] = field(default_factory=set)
     review_for: Set[str] = field(default_factory=set)
     order: int = field(default=0)

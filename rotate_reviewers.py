@@ -4,12 +4,30 @@ from typing import List
 
 from allocate_reviewers import (
     get_remote_sheet,
-    load_developers_from_sheet,
     write_exception_to_sheet,
     write_reviewers_to_sheet,
 )
 from data_types import Developer
-from env_constants import EXPECTED_HEADERS, REVIEWERS_CONFIG_LIST
+from env_constants import (
+    EXPECTED_HEADERS,
+    REVIEWERS_CONFIG_LIST,
+    DEFAULT_REVIEWER_NUMBER,
+)
+
+
+def load_developers_from_sheet() -> List[Developer]:
+    with get_remote_sheet() as sheet:
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
+
+    input_developers = map(
+        lambda record: Developer(
+            name=record["Developer"],
+            reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
+        ),
+        records,
+    )
+
+    return list(input_developers)
 
 
 def arrange_developers(devs: List[Developer]) -> None:
@@ -34,19 +52,6 @@ def get_previous_allocation() -> dict[str, str]:
     previous_allocation_.pop(0)
     result = dict(zip(developer_names, previous_allocation_))
     return result
-
-
-def add_preferable_reviewers(devs: List[Developer]) -> None:
-    for dev in devs:
-        if not dev.preferable_reviewer_names:
-            continue
-
-        for preferable_name in dev.preferable_reviewer_names:
-            preferable_reviewer = next(
-                dev_ for dev_ in devs if dev_.name == preferable_name
-            )
-            dev.reviewer_names.add(preferable_name)
-            preferable_reviewer.review_for.add(dev.name)
 
 
 def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
@@ -113,7 +118,6 @@ if __name__ == "__main__":
     try:
         developers = load_developers_from_sheet()
         arrange_developers(developers)
-        add_preferable_reviewers(developers)
         previous_allocation = get_previous_allocation()
         rotate_reviewers(developers, previous_allocation)
         write_reviewers_to_sheet(developers)
