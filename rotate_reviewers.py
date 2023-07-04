@@ -2,32 +2,17 @@ import math
 import traceback
 from typing import List
 
-from allocate_reviewers import (
+from utilities import (
     get_remote_sheet,
     write_exception_to_sheet,
     write_reviewers_to_sheet,
+    load_developers_from_sheet,
 )
 from data_types import Developer
 from env_constants import (
-    EXPECTED_HEADERS,
+    EXPECTED_HEADERS_FOR_ROTATION,
     REVIEWERS_CONFIG_LIST,
-    DEFAULT_REVIEWER_NUMBER,
 )
-
-
-def load_developers_from_sheet() -> List[Developer]:
-    with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-
-    input_developers = map(
-        lambda record: Developer(
-            name=record["Developer"],
-            reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
-        ),
-        records,
-    )
-
-    return list(input_developers)
 
 
 def arrange_developers(devs: List[Developer]) -> None:
@@ -40,7 +25,7 @@ def arrange_developers(devs: List[Developer]) -> None:
 def get_previous_allocation() -> dict[str, str]:
     with get_remote_sheet() as sheet:
         developer_names = sheet.col_values(1)
-        previous_allocation_ = sheet.col_values(len(EXPECTED_HEADERS) + 1)
+        previous_allocation_ = sheet.col_values(len(EXPECTED_HEADERS_FOR_ROTATION) + 1)
 
     if not previous_allocation_:
         return {}
@@ -116,11 +101,13 @@ def rotate_reviewers(devs: List[Developer], previous_allocation_: dict) -> None:
 
 if __name__ == "__main__":
     try:
-        developers = load_developers_from_sheet()
+        developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ROTATION)
         arrange_developers(developers)
         previous_allocation = get_previous_allocation()
         rotate_reviewers(developers, previous_allocation)
-        write_reviewers_to_sheet(developers)
+        write_reviewers_to_sheet(EXPECTED_HEADERS_FOR_ROTATION, developers)
     except Exception as exc:
         traceback.print_exc()
-        write_exception_to_sheet(str(exc) or str(type(exc)))
+        write_exception_to_sheet(
+            EXPECTED_HEADERS_FOR_ROTATION, str(exc) or str(type(exc))
+        )

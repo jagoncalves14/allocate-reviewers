@@ -46,7 +46,7 @@ DEVS = [
 
 @pytest.fixture(scope="function")
 def mocked_sheet() -> Generator[Worksheet, None, None]:
-    with patch("allocate_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
+    with patch("utilities.get_remote_sheet") as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             yield mocked_sheet
 

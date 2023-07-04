@@ -1,51 +1,19 @@
 import os
 import random
 import traceback
-from contextlib import contextmanager
-from datetime import datetime
 from typing import List, Set
 
-import gspread
 from dotenv import find_dotenv, load_dotenv
-from gspread import Worksheet
-from oauth2client.service_account import ServiceAccountCredentials
 
 from data_types import Developer, SelectableConfigure
-from env_constants import DEFAULT_REVIEWER_NUMBER, DRIVE_SCOPE, EXPECTED_HEADERS
+from env_constants import EXPECTED_HEADERS_FOR_ALLOCATION
+from utilities import (
+    load_developers_from_sheet,
+    write_exception_to_sheet,
+    write_reviewers_to_sheet,
+)
 
 load_dotenv(find_dotenv())
-
-
-@contextmanager
-def get_remote_sheet() -> Worksheet:
-    CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
-    SHEET_NAME = os.environ.get("SHEET_NAME")
-
-    credential = ServiceAccountCredentials.from_json_keyfile_name(
-        CREDENTIAL_FILE, DRIVE_SCOPE
-    )
-    client = gspread.authorize(credential)
-    sheet = client.open(SHEET_NAME).sheet1
-    yield sheet
-    client.session.close()
-
-
-def load_developers_from_sheet() -> List[Developer]:
-    with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-
-    input_developers = map(
-        lambda record: Developer(
-            name=record["Developer"],
-            reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
-            preferable_reviewer_names=set((record["Preferable Reviewers"]).split(", "))
-            if record["Preferable Reviewers"]
-            else set(),
-        ),
-        records,
-    )
-
-    return list(input_developers)
 
 
 def shuffle_and_get_the_most_available_names(
@@ -147,33 +115,13 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             reviewer.review_for.add(dev.name)
 
 
-def write_reviewers_to_sheet(devs: List[Developer]) -> None:
-    column_index = len(EXPECTED_HEADERS) + 1
-    column_header = datetime.now().strftime("%d-%m-%Y")
-    new_column = [column_header]
-
-    with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-        for record in records:
-            developer = next(dev for dev in devs if dev.name == record["Developer"])
-            reviewer_names = ", ".join(sorted(developer.reviewer_names))
-            new_column.append(reviewer_names)
-        sheet.insert_cols([new_column], column_index)
-
-
-def write_exception_to_sheet(error: str) -> None:
-    column_index = len(EXPECTED_HEADERS) + 1
-    new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
-
-    with get_remote_sheet() as sheet:
-        sheet.insert_cols([new_column], column_index)
-
-
 if __name__ == "__main__":
     try:
-        developers = load_developers_from_sheet()
+        developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ALLOCATION)
         allocate_reviewers(developers)
-        write_reviewers_to_sheet(developers)
+        write_reviewers_to_sheet(EXPECTED_HEADERS_FOR_ALLOCATION, developers)
     except Exception as exc:
         traceback.print_exc()
-        write_exception_to_sheet(str(exc) or str(type(exc)))
+        write_exception_to_sheet(
+            EXPECTED_HEADERS_FOR_ALLOCATION, str(exc) or str(type(exc))
+        )
