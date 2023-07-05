@@ -44,6 +44,7 @@ from one of the experienced developers.
 REVIEWERS_CONFIG_LIST (only used in the rotation script): is used to sort the developers list before making assignment.
 Recommendation: intertwine developers by their level of experience.
 
+
 # Usage guide
 1. Enable "Google Sheets API" and get the credential.
 2. Create a file "some_name.json" in the same directory as "allocate_reviewer.py" lives, and copy the credential data 
@@ -55,3 +56,8 @@ to the that file.
 7. Install necessary packages by "poetry install"  
 8. Start allocating reviewers by "python allocate_reviewers.py" or "python rotate_reviewers.py" 
 9. Optionally you can set up a cron job to do the job periodically using the template in "execute.sh"
+
+
+# TODO:
+- Tests for the rotation script.
+- Support skipping devs on vacation.
