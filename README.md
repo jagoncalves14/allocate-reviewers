@@ -10,7 +10,7 @@ The assignment is done randomly. Nonetheless, it is possible to control the pref
 developer.
 
 ## Reviewers rotation script
-The assignment is rotated logically so that all developers have a chance to read each other's code.
+The assignment is rotated orderly so that all developers have a chance to read each other's code.
 
 
 # Configurable parameters
@@ -25,6 +25,8 @@ The assignment is rotated logically so that all developers have a chance to read
 "Preferable Reviewers".
 - If the number of "Preferable Reviewers" is less than the "Reviewer Number", reviewers will be the ones in 
 "Preferable Reviewers", plus the ones that be picked randomly from the rest of developers.
+
+"Indexes" (only used in the rotation script): is used to store indexes of the current allocation.
 
 ## Environment variables
 CREDENTIAL_FILE: the name of the json file contains credential in json format. The script needs this credential to be 

@@ -8,6 +8,7 @@ class Developer:
     reviewer_number: int
     preferable_reviewer_names: Set[str] = field(default_factory=set)
     reviewer_names: Set[str] = field(default_factory=set)
+    reviewer_indexes: Set[str] = field(default_factory=set)
     review_for: Set[str] = field(default_factory=set)
     order: int = field(default=0)
 

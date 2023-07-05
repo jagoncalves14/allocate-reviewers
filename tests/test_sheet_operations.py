@@ -70,7 +70,7 @@ def test_load_developers_from_sheet(
     "headers,expected_start_column",
     [
         (EXPECTED_HEADERS_FOR_ALLOCATION, 4),
-        (EXPECTED_HEADERS_FOR_ROTATION, 3),
+        (EXPECTED_HEADERS_FOR_ROTATION, 4),
     ],
 )
 def test_write_reviewers_to_sheet(
@@ -96,7 +96,7 @@ def test_write_reviewers_to_sheet(
     "headers,expected_start_column",
     [
         (EXPECTED_HEADERS_FOR_ALLOCATION, 4),
-        (EXPECTED_HEADERS_FOR_ROTATION, 3),
+        (EXPECTED_HEADERS_FOR_ROTATION, 4),
     ],
 )
 def test_write_exception_to_sheet(

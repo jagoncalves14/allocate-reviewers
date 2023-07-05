@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from typing import List
+from typing import List, Callable
 
 import gspread
 from dotenv import find_dotenv, load_dotenv
@@ -9,23 +9,32 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
 from data_types import Developer
-from env_constants import DRIVE_SCOPE, DEFAULT_REVIEWER_NUMBER
+from env_constants import (
+    DRIVE_SCOPE,
+    DEVELOPER_HEADER,
+    REVIEWER_NUMBER_HEADER,
+    DEFAULT_REVIEWER_NUMBER,
+    PREFERABLE_REVIEWER_HEADER,
+)
 
 load_dotenv(find_dotenv())
 
 
-def load_developers_from_sheet(expected_headers: List[str]) -> List[Developer]:
+def load_developers_from_sheet(
+    expected_headers: List[str],
+    values_mapper: Callable[[dict], Developer] = lambda record: Developer(
+        name=record[DEVELOPER_HEADER],
+        reviewer_number=int(record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
+        preferable_reviewer_names=set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
+        if record[PREFERABLE_REVIEWER_HEADER]
+        else set(),
+    ),
+) -> List[Developer]:
     with get_remote_sheet() as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
 
     input_developers = map(
-        lambda record: Developer(
-            name=record["Developer"],
-            reviewer_number=int(record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER),
-            preferable_reviewer_names=set((record["Preferable Reviewers"]).split(", "))
-            if record.get("Preferable Reviewers")
-            else set(),
-        ),
+        values_mapper,
         records,
     )
 

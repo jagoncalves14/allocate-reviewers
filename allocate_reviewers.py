@@ -6,7 +6,13 @@ from typing import List, Set
 from dotenv import find_dotenv, load_dotenv
 
 from data_types import Developer, SelectableConfigure
-from env_constants import EXPECTED_HEADERS_FOR_ALLOCATION
+from env_constants import (
+    EXPECTED_HEADERS_FOR_ALLOCATION,
+    DEVELOPER_HEADER,
+    REVIEWER_NUMBER_HEADER,
+    DEFAULT_REVIEWER_NUMBER,
+    PREFERABLE_REVIEWER_HEADER,
+)
 from utilities import (
     load_developers_from_sheet,
     write_exception_to_sheet,
