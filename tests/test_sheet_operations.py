@@ -8,11 +8,11 @@ from freezegun import freeze_time
 from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
+from allocate_reviewers import write_reviewers_to_sheet
 from utilities import (
     get_remote_sheet,
     load_developers_from_sheet,
     write_exception_to_sheet,
-    write_reviewers_to_sheet,
 )
 from data_types import Developer
 from env_constants import (
@@ -66,29 +66,21 @@ def test_load_developers_from_sheet(
 
 
 @freeze_time("2022-09-25 12:12:12")
-@pytest.mark.parametrize(
-    "headers,expected_start_column",
-    [
-        (EXPECTED_HEADERS_FOR_ALLOCATION, 4),
-        (EXPECTED_HEADERS_FOR_ROTATION, 4),
-    ],
-)
 def test_write_reviewers_to_sheet(
-    mocked_sheet: Worksheet,
     mocked_devs: List[Developer],
-    headers: List[str],
-    expected_start_column: int,
 ) -> None:
-    DEV_REVIEWERS_MAPPER = {
-        "B": set(("C", "D")),
-        "E": set(("C", "A")),
-    }
-    mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
-    new_column = [["25-09-2022", "", "C, D", "", "", "A, C"]]
+    with patch("allocate_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
+        with mocked_get_remote_sheet() as mocked_sheet:
+            DEV_REVIEWERS_MAPPER = {
+                "B": set(("C", "D")),
+                "E": set(("C", "A")),
+            }
+            mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
+            new_column = [["25-09-2022", "", "C, D", "", "", "A, C"]]
 
-    mocked_sheet.get_all_records.return_value = SHEET
-    write_reviewers_to_sheet(headers, mocked_devs)
-    mocked_sheet.insert_cols.assert_called_once_with(new_column, expected_start_column)
+            mocked_sheet.get_all_records.return_value = SHEET
+            write_reviewers_to_sheet(mocked_devs)
+            mocked_sheet.insert_cols.assert_called_once_with(new_column, 4)
 
 
 @freeze_time("2022-09-30 12:12:12")

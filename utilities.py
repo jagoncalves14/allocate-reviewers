@@ -64,19 +64,3 @@ def write_exception_to_sheet(
 
     with get_remote_sheet() as sheet:
         sheet.insert_cols([new_column], column_index)
-
-
-def write_reviewers_to_sheet(
-    expected_headers: List[str], devs: List[Developer]
-) -> None:
-    column_index = len(expected_headers) + 1
-    column_header = datetime.now().strftime("%d-%m-%Y")
-    new_column = [column_header]
-
-    with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=expected_headers)
-        for record in records:
-            developer = next(dev for dev in devs if dev.name == record["Developer"])
-            reviewer_names = ", ".join(sorted(developer.reviewer_names))
-            new_column.append(reviewer_names)
-        sheet.insert_cols([new_column], column_index)

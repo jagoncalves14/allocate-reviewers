@@ -2,21 +2,18 @@ import os
 import random
 import traceback
 from typing import List, Set
+from datetime import datetime
 
 from dotenv import find_dotenv, load_dotenv
 
 from data_types import Developer, SelectableConfigure
 from env_constants import (
     EXPECTED_HEADERS_FOR_ALLOCATION,
-    DEVELOPER_HEADER,
-    REVIEWER_NUMBER_HEADER,
-    DEFAULT_REVIEWER_NUMBER,
-    PREFERABLE_REVIEWER_HEADER,
 )
 from utilities import (
     load_developers_from_sheet,
     write_exception_to_sheet,
-    write_reviewers_to_sheet,
+    get_remote_sheet,
 )
 
 load_dotenv(find_dotenv())
@@ -121,11 +118,27 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             reviewer.review_for.add(dev.name)
 
 
+def write_reviewers_to_sheet(devs: List[Developer]) -> None:
+    column_index = len(EXPECTED_HEADERS_FOR_ALLOCATION) + 1
+    column_header = datetime.now().strftime("%d-%m-%Y")
+    new_column = [column_header]
+
+    with get_remote_sheet() as sheet:
+        records = sheet.get_all_records(
+            expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION
+        )
+        for record in records:
+            developer = next(dev for dev in devs if dev.name == record["Developer"])
+            reviewer_names = ", ".join(sorted(developer.reviewer_names))
+            new_column.append(reviewer_names)
+        sheet.insert_cols([new_column], column_index)
+
+
 if __name__ == "__main__":
     try:
         developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ALLOCATION)
         allocate_reviewers(developers)
-        write_reviewers_to_sheet(EXPECTED_HEADERS_FOR_ALLOCATION, developers)
+        write_reviewers_to_sheet(developers)
     except Exception as exc:
         traceback.print_exc()
         write_exception_to_sheet(

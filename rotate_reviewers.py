@@ -100,17 +100,15 @@ def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
             starting_index = index - 1
 
 
-def write_reviewers_to_sheet(
-    expected_headers: List[str], devs: List[Developer]
-) -> None:
-    allocation_column_index = len(expected_headers)
+def write_reviewers_to_sheet(devs: List[Developer]) -> None:
+    allocation_column_index = len(EXPECTED_HEADERS_FOR_ROTATION)
     reviewers_column_index = allocation_column_index + 1
-    column_header = datetime.now().strftime("%d-%m-%Y")
     allocation_column = [ALLOCATION_INDEXES_HEADER]
-    reviewers_column = [column_header]
+    reviewers_column_header = datetime.now().strftime("%d-%m-%Y")
+    reviewers_column = [reviewers_column_header]
 
     with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=expected_headers)
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS_FOR_ROTATION)
         for record in records:
             developer = next(dev for dev in devs if dev.name == record["Developer"])
             reviewer_indexes = ", ".join(sorted(developer.reviewer_indexes))
@@ -141,7 +139,7 @@ if __name__ == "__main__":
         arrange_developers(developers)
         allocation_indexes = get_previous_allocation_indexes()
         rotate_reviewers(developers, allocation_indexes)
-        write_reviewers_to_sheet(EXPECTED_HEADERS_FOR_ROTATION, developers)
+        write_reviewers_to_sheet(developers)
     except Exception as exc:
         traceback.print_exc()
         write_exception_to_sheet(
