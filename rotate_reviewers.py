@@ -45,26 +45,71 @@ def get_previous_allocation_indexes() -> dict[str, str]:
 
 def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
     """
-    Assign reviewers to input developers.
-    The function mutate directly the input argument "devs".
+    Assign reviewers to input developers ensuring:
+    - Each developer gets exactly 2 reviewers
+    - At least 1 senior reviewer per developer
+    - Maximum 2 assignments per reviewer
+    - Different rotation from previous assignments
     """
+    from env_constants import EXPERIENCED_DEV_NAMES
+    
+    maximum_assignment = 2
+    devs.sort(key=lambda dev_: dev_.order, reverse=False)
+    
+    def find_reviewer(starting_index: int, dev: Developer, must_be_senior: bool = False, skip: int = 1) -> tuple[int, int, int]:
+        index_ = starting_index + skip
+        safe_index_ = index_ % len(devs)
+        reviewer = devs[safe_index_]
+        
+        is_invalid = (reviewer.name == dev.name or 
+                      reviewer.name in dev.reviewer_names or
+                      len(reviewer.review_for) >= maximum_assignment)
+                      
+        if must_be_senior:
+            is_invalid = is_invalid or reviewer.name not in EXPERIENCED_DEV_NAMES
+            
+        if is_invalid:
+            return find_reviewer(starting_index, dev, must_be_senior, skip + 1)
+                
+        return safe_index_, index_, skip
+    
+    for dev in devs:
+        dev.reviewer_indexes = set()
+        dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
+        starting_index = max(dev_allocated_indexes)
+        
+        safe_index, index, _ = find_reviewer(starting_index, dev, must_be_senior=True)
+        reviewer = devs[safe_index]
+        dev.reviewer_names.add(reviewer.name)
+        dev.reviewer_indexes.add(str(index))
+        reviewer.review_for.add(dev.name)
+        
+    for dev in devs:
+        if len(dev.reviewer_names) >= 2:
+            continue
+            
+        dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
+        starting_index = max(int(max(dev.reviewer_indexes)), max(dev_allocated_indexes))
+        
+        safe_index, index, _ = find_reviewer(starting_index, dev)
+        reviewer = devs[safe_index]
+        dev.reviewer_names.add(reviewer.name)
+        dev.reviewer_indexes.add(str(index))
+        reviewer.review_for.add(dev.name)
+
+
+"""
+def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
     maximum_assignment = math.ceil(
         sum(dev_.reviewer_number for dev_ in devs) // len(devs)
     )
 
     devs.sort(key=lambda dev_: dev_.order, reverse=False)
-    previous_allocation_indexes_of_first_dev = allocation_indexes_.get(
-        devs[0].name, ""
-    ).split(", ")
-    try:
-        previous_allocation_indexes_of_first_dev = list(
-            map(lambda index_: int(index_), previous_allocation_indexes_of_first_dev)
-        )
-        starting_index = max(previous_allocation_indexes_of_first_dev)
-    except ValueError:
-        starting_index = 0
-
     for dev in devs:
+        dev_allocated_indexes = allocation_indexes_.get(
+            dev.name, [0]
+        )
+        starting_index = max(dev_allocated_indexes)
         dev.reviewer_indexes = set()
         skip = 0
         index = None
@@ -85,7 +130,7 @@ def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
 
                 if len(
                     devs[safe_index_].review_for
-                ) >= maximum_assignment and skip_ - current_skip < len(devs):
+                ) >= maximum_assignment and skip_ - current_skip <= len(devs):
                     return get_safe_numbers(skip_ + 1)
 
                 return safe_index_, index_, skip_
@@ -98,6 +143,7 @@ def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
 
         if index is not None:
             starting_index = index - 1
+"""
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
