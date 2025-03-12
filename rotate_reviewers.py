@@ -1,7 +1,14 @@
+"""
+Rotate developers as reviewers for each developer in the list.
+For each rotation, each developer has other developers assigned as reviewers, 
+among which there is at least 1 senior reviewer.
+The new rotation result should be different from the previous one.
+"""
+
 import math
 import traceback
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from utilities import (
     get_remote_sheet,
@@ -26,7 +33,7 @@ def arrange_developers(devs: List[Developer]) -> None:
         dev.order = order
 
 
-def get_previous_allocation_indexes() -> dict[str, str]:
+def get_previous_allocation_indexes() -> dict[str, list]:
     with get_remote_sheet() as sheet:
         developer_names = sheet.col_values(1)
         allocation_indexes_ = sheet.col_values(len(EXPECTED_HEADERS_FOR_ROTATION))
@@ -40,110 +47,80 @@ def get_previous_allocation_indexes() -> dict[str, str]:
     developer_names.pop(0)
     allocation_indexes_.pop(0)
     result = dict(zip(developer_names, allocation_indexes_))
+
+    for dev_name, dev_allocated_indexes in result.items():
+        dev_allocated_indexes = dev_allocated_indexes.split(", ")
+        result[dev_name] = list(map(lambda index_: int(index_), dev_allocated_indexes))
+
     return result
 
 
 def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
     """
     Assign reviewers to input developers ensuring:
-    - Each developer gets exactly 2 reviewers
     - At least 1 senior reviewer per developer
-    - Maximum 2 assignments per reviewer
     - Different rotation from previous assignments
+    - Respect developer's requested reviewer_number property
     """
     from env_constants import EXPERIENCED_DEV_NAMES
-    
-    maximum_assignment = 2
+
+    # Calculate maximum assignments based on average reviewer_number
+    total_reviewer_number = sum(dev.reviewer_number for dev in devs)
+    maximum_assignment = math.ceil(total_reviewer_number / len(devs))
+
     devs.sort(key=lambda dev_: dev_.order, reverse=False)
-    
-    def find_reviewer(starting_index: int, dev: Developer, must_be_senior: bool = False, skip: int = 1) -> tuple[int, int, int]:
+
+    def find_reviewer(
+        starting_index: int, dev: Developer, must_be_senior: bool = False, skip: int = 1
+    ) -> tuple[int, int, int]:
         index_ = starting_index + skip
         safe_index_ = index_ % len(devs)
         reviewer = devs[safe_index_]
-        
-        is_invalid = (reviewer.name == dev.name or 
-                      reviewer.name in dev.reviewer_names or
-                      len(reviewer.review_for) >= maximum_assignment)
-                      
+
+        is_invalid = (
+            reviewer.name == dev.name
+            or reviewer.name in dev.reviewer_names
+            or len(reviewer.review_for) >= maximum_assignment
+        )
+
         if must_be_senior:
             is_invalid = is_invalid or reviewer.name not in EXPERIENCED_DEV_NAMES
-            
+
         if is_invalid:
             return find_reviewer(starting_index, dev, must_be_senior, skip + 1)
-                
+
         return safe_index_, index_, skip
-    
+
+    # Assign a senior reviewer to each developer
     for dev in devs:
         dev.reviewer_indexes = set()
         dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
         starting_index = max(dev_allocated_indexes)
-        
+
         safe_index, index, _ = find_reviewer(starting_index, dev, must_be_senior=True)
         reviewer = devs[safe_index]
         dev.reviewer_names.add(reviewer.name)
         dev.reviewer_indexes.add(str(index))
         reviewer.review_for.add(dev.name)
-        
+
+    # Assign additional reviewers up to the required reviewer_number
     for dev in devs:
-        if len(dev.reviewer_names) >= 2:
-            continue
-            
-        dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
-        starting_index = max(int(max(dev.reviewer_indexes)), max(dev_allocated_indexes))
-        
-        safe_index, index, _ = find_reviewer(starting_index, dev)
-        reviewer = devs[safe_index]
-        dev.reviewer_names.add(reviewer.name)
-        dev.reviewer_indexes.add(str(index))
-        reviewer.review_for.add(dev.name)
+        while len(dev.reviewer_names) < dev.reviewer_number:
+            dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
 
+            if dev.reviewer_indexes:
+                reviewer_indexes_as_ints = [int(idx) for idx in dev.reviewer_indexes]
+                starting_index = max(
+                    max(reviewer_indexes_as_ints), max(dev_allocated_indexes)
+                )
+            else:
+                starting_index = max(dev_allocated_indexes)
 
-"""
-def rotate_reviewers(devs: List[Developer], allocation_indexes_: dict) -> None:
-    maximum_assignment = math.ceil(
-        sum(dev_.reviewer_number for dev_ in devs) // len(devs)
-    )
-
-    devs.sort(key=lambda dev_: dev_.order, reverse=False)
-    for dev in devs:
-        dev_allocated_indexes = allocation_indexes_.get(
-            dev.name, [0]
-        )
-        starting_index = max(dev_allocated_indexes)
-        dev.reviewer_indexes = set()
-        skip = 0
-        index = None
-        remaining_reviewer_number = max(
-            0, dev.reviewer_number - len(dev.reviewer_names)
-        )
-        for review_number_index in range(0, remaining_reviewer_number):
-            current_skip = skip
-
-            def get_safe_numbers(skip_):
-                index_ = starting_index + review_number_index + skip_
-                safe_index_ = index_ % len(devs)
-                if (
-                    devs[safe_index_].name == dev.name
-                    or devs[safe_index_].name in dev.reviewer_names
-                ):
-                    return get_safe_numbers(skip_ + 1)
-
-                if len(
-                    devs[safe_index_].review_for
-                ) >= maximum_assignment and skip_ - current_skip <= len(devs):
-                    return get_safe_numbers(skip_ + 1)
-
-                return safe_index_, index_, skip_
-
-            safe_index, index, skip = get_safe_numbers(skip)
+            safe_index, index, _ = find_reviewer(starting_index, dev)
             reviewer = devs[safe_index]
             dev.reviewer_names.add(reviewer.name)
             dev.reviewer_indexes.add(str(index))
             reviewer.review_for.add(dev.name)
-
-        if index is not None:
-            starting_index = index - 1
-"""
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
@@ -169,25 +146,29 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
 
 if __name__ == "__main__":
-    try:
-        developers = load_developers_from_sheet(
-            EXPECTED_HEADERS_FOR_ROTATION,
-            values_mapper=lambda record: Developer(
-                name=record[DEVELOPER_HEADER],
-                reviewer_number=int(
-                    record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
+    week_number = datetime.now(timezone.utc).isocalendar().week
+    if week_number % 2 != 0:
+        try:
+            developers = load_developers_from_sheet(
+                EXPECTED_HEADERS_FOR_ROTATION,
+                values_mapper=lambda record: Developer(
+                    name=record[DEVELOPER_HEADER],
+                    reviewer_number=int(
+                        record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
+                    ),
+                    reviewer_indexes=(
+                        set((record[ALLOCATION_INDEXES_HEADER]).split(", "))
+                        if record[ALLOCATION_INDEXES_HEADER]
+                        else set()
+                    ),
                 ),
-                reviewer_indexes=set((record[ALLOCATION_INDEXES_HEADER]).split(", "))
-                if record[ALLOCATION_INDEXES_HEADER]
-                else set(),
-            ),
-        )
-        arrange_developers(developers)
-        allocation_indexes = get_previous_allocation_indexes()
-        rotate_reviewers(developers, allocation_indexes)
-        write_reviewers_to_sheet(developers)
-    except Exception as exc:
-        traceback.print_exc()
-        write_exception_to_sheet(
-            EXPECTED_HEADERS_FOR_ROTATION, str(exc) or str(type(exc))
-        )
+            )
+            arrange_developers(developers)
+            allocation_indexes = get_previous_allocation_indexes()
+            rotate_reviewers(developers, allocation_indexes)
+            write_reviewers_to_sheet(developers)
+        except Exception as exc:
+            traceback.print_exc()
+            write_exception_to_sheet(
+                EXPECTED_HEADERS_FOR_ROTATION, str(exc) or str(type(exc))
+            )
