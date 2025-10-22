@@ -20,6 +20,16 @@ from env_constants import (
 load_dotenv(find_dotenv())
 
 
+def column_number_to_letter(col_num: int) -> str:
+    """Convert column number to Excel-style letter (1=A, 27=AA, etc.)"""
+    result = ""
+    while col_num > 0:
+        col_num -= 1
+        result = chr(65 + (col_num % 26)) + result
+        col_num //= 26
+    return result
+
+
 def load_developers_from_sheet(
     expected_headers: List[str],
     values_mapper: Callable[[dict], Developer] = lambda record: Developer(
@@ -119,15 +129,17 @@ def update_current_sprint_reviewers(
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, column_index, reviewer_names)
         
-        # Clear background color from all date columns (D onwards)
+        # Clear background color from all date columns (after current column)
         last_col = sheet.col_count
-        if last_col >= column_index:
-            range_to_clear = f"{chr(64 + column_index + 1)}1:{chr(64 + last_col)}{len(records) + 1}"
+        if last_col > column_index:
+            start_col_letter = column_number_to_letter(column_index + 1)
+            end_col_letter = column_number_to_letter(last_col)
+            range_to_clear = f"{start_col_letter}1:{end_col_letter}{len(records) + 1}"
             sheet.format(range_to_clear, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
         
         # Apply background color to the current column (most recent)
         num_rows = len(records) + 1
-        col_letter = chr(64 + column_index)
+        col_letter = column_number_to_letter(column_index)
         range_to_color = f"{col_letter}1:{col_letter}{num_rows}"
         sheet.format(range_to_color, {
             "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1}  # Light blue
