@@ -170,9 +170,9 @@ def update_current_sprint_reviewers(
                             },
                             "textFormat": {
                                 "foregroundColor": {
-                                    "red": 0.3,
-                                    "green": 0.3,
-                                    "blue": 0.3,
+                                    "red": 0.8,
+                                    "green": 0.8,
+                                    "blue": 0.8,
                                 },
                                 "bold": False,
                             },
@@ -308,9 +308,9 @@ def update_current_team_rotation(
                             },
                             "textFormat": {
                                 "foregroundColor": {
-                                    "red": 0.3,
-                                    "green": 0.3,
-                                    "blue": 0.3,
+                                    "red": 0.8,
+                                    "green": 0.8,
+                                    "blue": 0.8,
                                 },
                                 "bold": False,
                             },
