@@ -182,11 +182,16 @@ def update_current_sprint_reviewers(
                         sheet.format(
                             f"{col_letter}2:{col_letter}{num_rows}",
                             {
+                                "backgroundColor": {
+                                    "red": 1,
+                                    "green": 1,
+                                    "blue": 1,
+                                },
                                 "textFormat": {
                                     "foregroundColor": {
-                                        "red": 0.3,
-                                        "green": 0.3,
-                                        "blue": 0.3,
+                                        "red": 0.8,
+                                        "green": 0.8,
+                                        "blue": 0.8,
                                     },
                                     "bold": False,
                                 }
@@ -320,11 +325,16 @@ def update_current_team_rotation(
                         sheet.format(
                             f"{col_letter}2:{col_letter}{num_rows}",
                             {
+                                "backgroundColor": {
+                                    "red": 1,
+                                    "green": 1,
+                                    "blue": 1,
+                                },
                                 "textFormat": {
                                     "foregroundColor": {
-                                        "red": 0.3,
-                                        "green": 0.3,
-                                        "blue": 0.3,
+                                        "red": 0.8,
+                                        "green": 0.8,
+                                        "blue": 0.8,
                                     },
                                     "bold": False,
                                 }

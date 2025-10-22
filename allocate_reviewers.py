@@ -222,6 +222,11 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
                         sheet.format(
                             f"{col_letter}2:{col_letter}{num_rows}",
                             {
+                                "backgroundColor": {
+                                    "red": 1,
+                                    "green": 1,
+                                    "blue": 1,
+                                },
                                 "textFormat": {
                                     "foregroundColor": {
                                         "red": 0.8,
