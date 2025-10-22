@@ -129,20 +129,37 @@ def update_current_sprint_reviewers(
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, column_index, reviewer_names)
         
-        # Clear background color from all date columns (after current column)
+        # Style older columns to the right: light grey text, normal weight
+        num_rows = len(records) + 1
         last_col = sheet.col_count
         if last_col > column_index:
-            start_col_letter = column_number_to_letter(column_index + 1)
-            end_col_letter = column_number_to_letter(last_col)
-            range_to_clear = f"{start_col_letter}1:{end_col_letter}{len(records) + 1}"
-            sheet.format(range_to_clear, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+            for col in range(column_index + 1, last_col + 1):
+                col_letter = column_number_to_letter(col)
+                # Header: white background, light grey text
+                sheet.format(f"{col_letter}1", {
+                    "backgroundColor": {"red": 1, "green": 1, "blue": 1},
+                    "textFormat": {
+                        "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
+                        "fontWeight": 400
+                    }
+                })
+                # Data rows: light grey text, normal weight
+                if num_rows > 1:
+                    sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
+                        "textFormat": {
+                            "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
+                            "fontWeight": 400
+                        }
+                    })
         
-        # Apply background color to the current column (most recent)
-        num_rows = len(records) + 1
+        # Apply light blue background ONLY to header of current column
         col_letter = column_number_to_letter(column_index)
-        range_to_color = f"{col_letter}1:{col_letter}{num_rows}"
-        sheet.format(range_to_color, {
-            "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1}  # Light blue
+        sheet.format(f"{col_letter}1", {
+            "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
+            "textFormat": {
+                "foregroundColor": {"red": 0, "green": 0, "blue": 0},
+                "fontWeight": 700
+            }
         })
         
         # Set column width to 280px for manual runs
