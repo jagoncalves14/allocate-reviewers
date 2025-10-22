@@ -129,38 +129,41 @@ def update_current_sprint_reviewers(
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, column_index, reviewer_names)
         
-        # Style older columns to the right: light grey text, normal weight
-        num_rows = len(records) + 1
-        last_col = sheet.col_count
-        if last_col > column_index:
-            for col in range(column_index + 1, last_col + 1):
-                col_letter = column_number_to_letter(col)
-                # Header: white background, light grey text, not bold
-                sheet.format(f"{col_letter}1", {
-                    "backgroundColor": {"red": 1, "green": 1, "blue": 1},
-                    "textFormat": {
-                        "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                        "bold": False
-                    }
-                })
-                # Data rows: light grey text, not bold
-                if num_rows > 1:
-                    sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
+        # Style columns (optional - skip if rate limited)
+        try:
+            num_rows = len(records) + 1
+            last_col = sheet.col_count
+            
+            # Apply light blue background ONLY to header of current column
+            col_letter = column_number_to_letter(column_index)
+            sheet.format(f"{col_letter}1", {
+                "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
+                "textFormat": {
+                    "foregroundColor": {"red": 0, "green": 0, "blue": 0},
+                    "bold": True
+                }
+            })
+            
+            # Style older columns (if quota allows)
+            if last_col > column_index:
+                for col in range(column_index + 1, min(last_col + 1, column_index + 6)):
+                    col_letter = column_number_to_letter(col)
+                    sheet.format(f"{col_letter}1", {
+                        "backgroundColor": {"red": 1, "green": 1, "blue": 1},
                         "textFormat": {
                             "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
                             "bold": False
                         }
                     })
-        
-        # Apply light blue background ONLY to header of current column
-        col_letter = column_number_to_letter(column_index)
-        sheet.format(f"{col_letter}1", {
-            "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
-            "textFormat": {
-                "foregroundColor": {"red": 0, "green": 0, "blue": 0},
-                "bold": True
-            }
-        })
+                    if num_rows > 1:
+                        sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
+                            "textFormat": {
+                                "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
+                                "bold": False
+                            }
+                        })
+        except Exception as e:
+            print(f"Note: Styling skipped (quota or other issue): {e}")
         
         # Set column width to 280px for manual runs
         body = {
