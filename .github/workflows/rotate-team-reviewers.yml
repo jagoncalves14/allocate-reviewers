@@ -63,7 +63,6 @@ jobs:
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
           DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
           EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
-          REVIEWERS_CONFIG_LIST: ${{ secrets.REVIEWERS_CONFIG_LIST }}
           MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       
       - name: Clean up credentials

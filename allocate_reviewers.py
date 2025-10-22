@@ -1,3 +1,47 @@
+"""
+FE Devs Allocation - Individual Developer Reviewer Assignment
+
+This script allocates reviewers to individual developers for the FE Devs team.
+
+BUSINESS LOGIC:
+1. Each developer can specify their own "Number of Reviewers" in the Google Sheet
+   - Uses DEFAULT_REVIEWER_NUMBER as fallback if column is empty
+   - Allows per-developer customization (e.g., Joao needs 2, Pavel needs 3)
+
+2. Reviewer Selection Priority (in order):
+   a) PREFERABLE REVIEWERS: Tries to assign reviewers from the
+      developer's "Preferable Reviewers" list first
+   b) EXPERIENCED DEVELOPERS: Ensures EVERY developer gets at least 1
+      experienced developer as a reviewer (mandatory requirement)
+   c) ALL DEVELOPERS: Fills remaining slots from all available devs
+
+3. Smart Selection:
+   - Never assigns a developer to review themselves
+   - Balances workload: prioritizes developers with fewer review assignments
+   - Randomizes selection among equally available reviewers
+
+4. Customization via Google Sheet:
+   - "Number of Reviewers" column: How many reviewers this developer needs
+   - "Preferable Reviewers" column: Comma-separated list of preferred names
+
+EXAMPLE:
+Developer: Joao
+Number of Reviewers: 2
+Preferable Reviewers: Pavel, Claudiu
+Experienced Devs: Pavel, Claudiu, Chris, Robert
+
+Allocation Process:
+1. Try preferable: Pavel (✓ available) → assigned
+2. Check experienced: Pavel already assigned → requirement met ✓
+3. Fill remaining slots: Selects from all devs (e.g., Shanna)
+Result: Joao → reviewed by Pavel, Shanna
+
+SCHEDULE:
+- Runs every 15 days on Wednesdays at 9:00 AM UTC
+- Can be triggered manually via GitHub Actions
+- Manual runs update existing column, scheduled runs create new column
+"""
+
 import os
 import random
 import traceback

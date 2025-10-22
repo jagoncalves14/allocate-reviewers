@@ -70,8 +70,22 @@ Two automated workflows run via GitHub Actions:
 ### 2. Teams Rotation
 - Runs **every 15 days** on Wednesdays at 9:00 AM UTC (same schedule as FE Devs)
 - Checks if at least 15 days have passed since the last rotation
-- Rotates team reviewer assignments using index system
-- Ensures different rotation from previous assignments
+- Assigns reviewers to teams based on team composition
+- Each team can specify its own "Number of Reviewers" in the sheet (uses `DEFAULT_REVIEWER_NUMBER` if empty)
+
+**Assignment Logic** (for each team with N reviewers needed):
+- **0 team members**: Assigns N random experienced developers
+- **Fewer members than N**: Uses all team members + fills remaining slots with experienced devs (not from the team)
+- **Enough members**: Randomly selects N members from the team
+
+**Example** (Team needs 2 reviewers):
+- Team with 0 members → 2 random experienced devs (e.g., Joao, Pavel)
+- Team with 1 member (Robert) → Robert + 1 experienced dev not from team (e.g., Joao)
+- Team with 2 members (Robert, Pavel) → both members
+- Team with 3+ members (Robert, Pavel, Ximo) → 2 random members (e.g., Pavel, Ximo)
+
+**Example** (Team needs 3 reviewers):
+- Team with 5 members (Robert, Pavel, Ximo, Joao, Chris) → 3 random members (e.g., Pavel, Ximo, Chris)
 
 ### Setup Instructions
 
@@ -84,10 +98,9 @@ Two automated workflows run via GitHub Actions:
    | Secret Name | Description | Example |
    |-------------|-------------|---------|
    | `GOOGLE_CREDENTIALS_JSON` | Full JSON content of your Google Service Account credentials file | `{"type": "service_account", ...}` |
-   | `SHEET_NAME` | Name of your Google Sheet | `"Team Reviewers"` |
-   | `DEFAULT_REVIEWER_NUMBER` | Default number of reviewers per developer | `"1"` |
-   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Alice, Bob"` |
-   | `REVIEWERS_CONFIG_LIST` | Comma-separated ordered list of all developers/teams for rotation | `"Joao, Pavel, Shanna, Robert"` |
+   | `SHEET_NAME` | Name of your Google Sheet | `"PVC Front End - Code Reviewers [Demo]"` |
+   | `DEFAULT_REVIEWER_NUMBER` | Number of reviewers per developer/team | `"2"` |
+   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Joao, Pavel, Claudiu, Chris"` |
 
 3. **For `GOOGLE_CREDENTIALS_JSON`:**
    - Open your Google Service Account credentials JSON file
@@ -107,6 +120,22 @@ Two automated workflows run via GitHub Actions:
    - Select "Rotate Team Reviewers" workflow
    - Click "Run workflow" button
    - This will force a team rotation immediately, regardless of when the last rotation occurred
+
+### Google Sheet Structure
+
+Your Google Sheet should have **two tabs**:
+
+**Tab 1: "FE Devs"** (Individual developers)
+- Column A: `Developer` - Developer name
+- Column B: `Number of Reviewers` - How many reviewers this developer needs
+- Column C: `Preferable Reviewers` - Comma-separated list of preferred reviewer names
+- Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
+
+**Tab 2: "Teams"** (Team-based rotation)
+- Column A: `Team` - Team name
+- Column B: `Team Developers` - Comma-separated list of developers in this team
+- Column C: `Number of Reviewers` - How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
+- Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
 ### How It Works
 

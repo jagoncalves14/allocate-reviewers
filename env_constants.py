@@ -20,9 +20,8 @@ FE_DEVS_COLUMNS = [
 # Column names for Teams rotation
 TEAMS_COLUMNS = [
     "Team",  # Column 0: Team name (identifier)
-    "Team Developers",  # Column 1: Default developers for the team
-    "Number of Reviewers",  # Column 2: Number of reviewers
-    "Indexes",  # Column 3: Rotation indexes
+    "Team Developers",  # Column 1: Developers in this team
+    "Number of Reviewers",  # Column 2: Number of reviewers for this team
 ]
 
 # Convenient access to column names by index
@@ -33,7 +32,6 @@ PREFERABLE_REVIEWER_HEADER = FE_DEVS_COLUMNS[2]
 TEAM_HEADER = TEAMS_COLUMNS[0]
 TEAM_DEVELOPERS_HEADER = TEAMS_COLUMNS[1]
 TEAM_REVIEWER_NUMBER_HEADER = TEAMS_COLUMNS[2]
-ALLOCATION_INDEXES_HEADER = TEAMS_COLUMNS[3]
 
 # Expected headers for each sheet type
 EXPECTED_HEADERS_FOR_ALLOCATION = FE_DEVS_COLUMNS
@@ -45,7 +43,4 @@ DEFAULT_REVIEWER_NUMBER = int(
 )
 EXPERIENCED_DEV_NAMES = set(
     os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", ")
-)
-REVIEWERS_CONFIG_LIST = list(
-    os.environ.get("REVIEWERS_CONFIG_LIST", "").split(", ")
 )

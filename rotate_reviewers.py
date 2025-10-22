@@ -1,11 +1,38 @@
 """
-Rotate developers as reviewers for each developer in the list.
-For each rotation, each developer has other developers assigned as reviewers,
-among which there is at least 1 senior reviewer.
-The new rotation result should be different from the previous one.
+Allocate and Rotate Reviewers
+
+FE DEVS ALLOCATION (allocate_reviewers.py):
+- Randomly assigns experienced developers as reviewers to individual developers
+- Each developer gets a specified number of reviewers
+- At least one reviewer must be an experienced developer
+- Runs every 15 days or manually
+
+TEAMS ROTATION (this file - rotate_reviewers.py):
+- Assigns reviewers to teams based on team composition
+- Each team can specify "Number of Reviewers" in the sheet
+- Uses DEFAULT_REVIEWER_NUMBER as fallback if column is empty
+- Just like FE Devs, each team can have a different number of reviewers
+
+Assignment Logic (for team needing N reviewers):
+1. If team has 0 members:
+   → Assign N random experienced developers
+
+2. If team has fewer members than N:
+   → Use all team members as reviewers
+   → Fill remaining slots with experienced devs (not from the team)
+
+3. If team has >= N members:
+   → Randomly select N members from the team
+
+Examples:
+- Team needs 2 reviewers, has 0 members → 2 random experienced devs
+- Team needs 2 reviewers, has 1 member (Robert) → Robert + 1 experienced dev
+- Team needs 2 reviewers, has 3+ members → 2 random members from team
+- Team needs 3 reviewers, has 5 members → 3 random members from team
+
+Runs every 15 days on Wednesdays or manually via GitHub Actions.
 """
 
-import math
 import traceback
 from typing import List
 from datetime import datetime
@@ -20,150 +47,97 @@ from utilities import (
 from data_types import Developer
 from env_constants import (
     EXPECTED_HEADERS_FOR_ROTATION,
-    REVIEWERS_CONFIG_LIST,
-    DEFAULT_REVIEWER_NUMBER,
-    ALLOCATION_INDEXES_HEADER,
-    TEAM_REVIEWER_NUMBER_HEADER,
     TEAM_HEADER,
 )
 
 
-def arrange_developers(devs: List[Developer]) -> None:
-    for dev in devs:
-        matched_name = next(
-            name for name in REVIEWERS_CONFIG_LIST if name == dev.name
-        )
-        order = REVIEWERS_CONFIG_LIST.index(matched_name)
-        dev.order = order
+def parse_team_developers(team_developers_str: str) -> set[str]:
+    """Parse comma-separated team developers into a set of names"""
+    if not team_developers_str:
+        return set()
+    return set(name.strip() for name in team_developers_str.split(","))
 
 
-def get_previous_allocation_indexes() -> dict[str, list]:
-    with get_remote_sheet("Teams") as sheet:
-        developer_names = sheet.col_values(1)
-        allocation_indexes_ = sheet.col_values(
-            len(EXPECTED_HEADERS_FOR_ROTATION)
-        )
-
-    if not allocation_indexes_:
-        return {}
-
-    if len(developer_names) != len(allocation_indexes_):
-        return {}
-
-    developer_names.pop(0)
-    allocation_indexes_.pop(0)
-    result = dict(zip(developer_names, allocation_indexes_))
-
-    for dev_name, dev_allocated_indexes in result.items():
-        dev_allocated_indexes = dev_allocated_indexes.split(", ")
-        result[dev_name] = [int(index_) for index_ in dev_allocated_indexes]
-
-    return result
-
-
-def rotate_reviewers(
-    devs: List[Developer], allocation_indexes_: dict
+def assign_team_reviewers(
+    teams: List[Developer], num_reviewers: int
 ) -> None:
     """
-    Assign reviewers to input developers ensuring:
-    - At least 1 senior reviewer per developer
-    - Different rotation from previous assignments
-    - Respect developer's requested reviewer_number property
+    Assign reviewers to teams based on team composition.
+
+    Args:
+        teams: List of teams (stored as Developer objects)
+        num_reviewers: Number of reviewers to assign per team
+
+    Logic:
+    - If team has 0 members: assign num_reviewers random experienced devs
+    - If team has < num_reviewers members: use all members + fill with
+      experienced devs
+    - If team has >= num_reviewers members: randomly select num_reviewers
+      members
     """
+    import random
     from env_constants import EXPERIENCED_DEV_NAMES
 
-    # Calculate maximum assignments based on average reviewer_number
-    total_reviewer_number = sum(dev.reviewer_number for dev in devs)
-    maximum_assignment = math.ceil(total_reviewer_number / len(devs))
+    # Get list of experienced developers
+    experienced_devs = list(EXPERIENCED_DEV_NAMES)
+    if not experienced_devs:
+        raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
 
-    devs.sort(key=lambda dev_: dev_.order, reverse=False)
+    for team in teams:
+        team.reviewer_indexes = set()
+        team.reviewer_names = set()
 
-    def find_reviewer(
-        starting_index: int,
-        dev: Developer,
-        must_be_senior: bool = False,
-        skip: int = 1,
-    ) -> tuple[int, int, int]:
-        index_ = starting_index + skip
-        safe_index_ = index_ % len(devs)
-        reviewer = devs[safe_index_]
+        # Get team's developers
+        team_members = list(team.preferable_reviewer_names)
+        num_members = len(team_members)
 
-        is_invalid = (
-            reviewer.name == dev.name
-            or reviewer.name in dev.reviewer_names
-            or len(reviewer.review_for) >= maximum_assignment
-        )
-
-        if must_be_senior:
-            is_invalid = (
-                is_invalid or reviewer.name not in EXPERIENCED_DEV_NAMES
+        if num_members == 0:
+            # No team members → assign num_reviewers random experienced devs
+            selected = random.sample(
+                experienced_devs, min(num_reviewers, len(experienced_devs))
             )
+            team.reviewer_names.update(selected)
 
-        if is_invalid:
-            return find_reviewer(starting_index, dev, must_be_senior, skip + 1)
+        elif num_members < num_reviewers:
+            # Fewer members than needed → use all + fill with experienced devs
+            team.reviewer_names.update(team_members)
 
-        return safe_index_, index_, skip
+            # Get experienced devs not in this team
+            eligible = [
+                dev for dev in experienced_devs if dev not in team_members
+            ]
 
-    # Assign a senior reviewer to each developer
-    for dev in devs:
-        dev.reviewer_indexes = set()
-        dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
-        starting_index = max(dev_allocated_indexes)
-
-        safe_index, index, _ = find_reviewer(
-            starting_index, dev, must_be_senior=True
-        )
-        reviewer = devs[safe_index]
-        dev.reviewer_names.add(reviewer.name)
-        dev.reviewer_indexes.add(str(index))
-        reviewer.review_for.add(dev.name)
-
-    # Assign additional reviewers up to the required reviewer_number
-    for dev in devs:
-        while len(dev.reviewer_names) < dev.reviewer_number:
-            dev_allocated_indexes = allocation_indexes_.get(dev.name, [0])
-
-            if dev.reviewer_indexes:
-                reviewer_indexes_as_ints = [
-                    int(idx) for idx in dev.reviewer_indexes
-                ]
-                starting_index = max(
-                    reviewer_indexes_as_ints + dev_allocated_indexes
+            # Fill remaining slots
+            remaining_slots = num_reviewers - num_members
+            if eligible and remaining_slots > 0:
+                selected = random.sample(
+                    eligible, min(remaining_slots, len(eligible))
                 )
-            else:
-                starting_index = max(dev_allocated_indexes)
+                team.reviewer_names.update(selected)
 
-            safe_index, index, _ = find_reviewer(starting_index, dev)
-            reviewer = devs[safe_index]
-            dev.reviewer_names.add(reviewer.name)
-            dev.reviewer_indexes.add(str(index))
-            reviewer.review_for.add(dev.name)
+        else:
+            # Enough members → randomly select num_reviewers from team
+            selected = random.sample(team_members, num_reviewers)
+            team.reviewer_names.update(selected)
 
 
-def write_reviewers_to_sheet(devs: List[Developer]) -> None:
-    allocation_column_index = len(EXPECTED_HEADERS_FOR_ROTATION)
-    reviewers_column_index = allocation_column_index + 1
-    allocation_column = [ALLOCATION_INDEXES_HEADER]
-    reviewers_column_header = datetime.now().strftime("%d-%m-%Y")
-    reviewers_column = [reviewers_column_header]
+def write_reviewers_to_sheet(teams: List[Developer]) -> None:
+    # For Teams, we don't use the Indexes column anymore
+    # Just insert the reviewers column after "Number of Reviewers"
+    column_index = len(EXPECTED_HEADERS_FOR_ROTATION)
+    column_header = datetime.now().strftime("%d-%m-%Y")
+    new_column = [column_header]
 
     with get_remote_sheet("Teams") as sheet:
         records = sheet.get_all_records(
             expected_headers=EXPECTED_HEADERS_FOR_ROTATION
         )
         for record in records:
-            developer = next(
-                dev for dev in devs if dev.name == record[TEAM_HEADER]
-            )
-            reviewer_indexes = ", ".join(sorted(developer.reviewer_indexes))
-            allocation_column.append(reviewer_indexes)
+            team = next(t for t in teams if t.name == record[TEAM_HEADER])
+            reviewer_names = ", ".join(sorted(team.reviewer_names))
+            new_column.append(reviewer_names)
 
-            reviewer_names = ", ".join(sorted(developer.reviewer_names))
-            reviewers_column.append(reviewer_names)
-
-        sheet.delete_columns(allocation_column_index)
-        sheet.insert_cols([allocation_column], allocation_column_index)
-        sheet.insert_cols([reviewers_column], reviewers_column_index)
+        sheet.insert_cols([new_column], column_index)
 
         # Apply styling: light blue for new, light grey for 5 old
         num_rows = len(records) + 1
@@ -173,12 +147,12 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
             # Style up to 5 older columns to the right (if they exist)
             max_old_cols_to_style = 5
             cols_to_style = min(
-                max_old_cols_to_style, last_col - reviewers_column_index
+                max_old_cols_to_style, last_col - column_index
             )
 
             if cols_to_style > 0:
                 for i in range(1, cols_to_style + 1):
-                    col = reviewers_column_index + i
+                    col = column_index + i
                     col_letter = column_number_to_letter(col)
                     # Header: white bg, light grey text, not bold
                     sheet.format(
@@ -216,7 +190,7 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
                         )
 
             # Apply light blue background to header of new column
-            new_col_letter = column_number_to_letter(reviewers_column_index)
+            new_col_letter = column_number_to_letter(column_index)
             sheet.format(
                 f"{new_col_letter}1",
                 {
@@ -237,9 +211,14 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
 if __name__ == "__main__":
     import os
+    from env_constants import (
+        TEAM_DEVELOPERS_HEADER,
+        TEAM_REVIEWER_NUMBER_HEADER,
+        DEFAULT_REVIEWER_NUMBER,
+    )
 
     try:
-        developers = load_developers_from_sheet(
+        teams = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
             values_mapper=lambda record: Developer(
                 name=record[TEAM_HEADER],
@@ -247,29 +226,27 @@ if __name__ == "__main__":
                     record[TEAM_REVIEWER_NUMBER_HEADER]
                     or DEFAULT_REVIEWER_NUMBER
                 ),
-                reviewer_indexes=(
-                    set((record[ALLOCATION_INDEXES_HEADER]).split(", "))
-                    if record[ALLOCATION_INDEXES_HEADER]
-                    else set()
+                # Store team developers in preferable_reviewer_names field
+                preferable_reviewer_names=parse_team_developers(
+                    record[TEAM_DEVELOPERS_HEADER]
                 ),
             ),
             tab_name="Teams",
         )
-        arrange_developers(developers)
-        allocation_indexes = get_previous_allocation_indexes()
-        rotate_reviewers(developers, allocation_indexes)
+        
+        # Assign reviewers to each team based on their reviewer_number
+        for team in teams:
+            assign_team_reviewers([team], team.reviewer_number)
 
         # Check if this is a manual run
         is_manual_run = os.environ.get("MANUAL_RUN", "false") == "true"
 
         if is_manual_run:
             print("Manual run detected - updating current rotation")
-            update_current_team_rotation(
-                EXPECTED_HEADERS_FOR_ROTATION, developers
-            )
+            update_current_team_rotation(EXPECTED_HEADERS_FOR_ROTATION, teams)
         else:
             print("Scheduled run - creating new rotation")
-            write_reviewers_to_sheet(developers)
+            write_reviewers_to_sheet(teams)
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc()
         write_exception_to_sheet(
