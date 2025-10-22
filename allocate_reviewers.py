@@ -14,6 +14,7 @@ from utilities import (
     load_developers_from_sheet,
     write_exception_to_sheet,
     get_remote_sheet,
+    update_current_sprint_reviewers,
 )
 
 load_dotenv(find_dotenv())
@@ -144,14 +145,18 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
 if __name__ == "__main__":
     try:
-        developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ALLOCATION)
+        developers = load_developers_from_sheet(
+            EXPECTED_HEADERS_FOR_ALLOCATION
+        )
         allocate_reviewers(developers)
 
         # Manual runs update existing column, scheduled runs create new column
         is_manual = os.environ.get("MANUAL_RUN", "").lower() == "true"
         if is_manual:
             print("Manual run: Updating current sprint column")
-            update_current_sprint_reviewers(developers)
+            update_current_sprint_reviewers(
+                EXPECTED_HEADERS_FOR_ALLOCATION, developers
+            )
         else:
             print("Scheduled run: Creating new sprint column")
             write_reviewers_to_sheet(developers)

@@ -24,8 +24,12 @@ def load_developers_from_sheet(
     expected_headers: List[str],
     values_mapper: Callable[[dict], Developer] = lambda record: Developer(
         name=record[DEVELOPER_HEADER],
-        reviewer_number=int(record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
-        preferable_reviewer_names=set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
+        reviewer_number=int(
+            record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
+        ),
+        preferable_reviewer_names=set(
+            (record[PREFERABLE_REVIEWER_HEADER]).split(", ")
+        )
         if record[PREFERABLE_REVIEWER_HEADER]
         else set(),
     ),
@@ -64,3 +68,53 @@ def write_exception_to_sheet(
 
     with get_remote_sheet() as sheet:
         sheet.insert_cols([new_column], column_index)
+
+
+def update_current_sprint_reviewers(
+    expected_headers: List[str], devs: List[Developer]
+) -> None:
+    """Update reviewers in the current sprint column (for manual runs)"""
+    column_index = len(expected_headers) + 1
+
+    with get_remote_sheet() as sheet:
+        # Get the current header
+        first_row = sheet.row_values(1)
+        current_header = (
+            first_row[column_index - 1]
+            if len(first_row) >= column_index
+            else None
+        )
+
+        if not current_header:
+            # No existing sprint column, create one
+            print("No existing sprint found, creating new column")
+            from allocate_reviewers import write_reviewers_to_sheet
+
+            write_reviewers_to_sheet(devs)
+            return
+
+        # Extract original sprint date from header
+        if " / Manual Run on:" in current_header:
+            # Already has manual run info, extract sprint date
+            sprint_date = current_header.split(" / Manual Run on:")[0].strip()
+        else:
+            # First manual run on this sprint
+            sprint_date = current_header
+
+        # Create new header with manual run info
+        today = datetime.now().strftime("%d-%m-%Y")
+        new_header = f"{sprint_date} / Manual Run on: {today}"
+
+        # Update the column
+        records = sheet.get_all_records(expected_headers=expected_headers)
+
+        # Update header
+        sheet.update_cell(1, column_index, new_header)
+
+        # Update reviewer assignments
+        for idx, record in enumerate(records, start=2):
+            developer = next(
+                dev for dev in devs if dev.name == record[DEVELOPER_HEADER]
+            )
+            reviewer_names = ", ".join(sorted(developer.reviewer_names))
+            sheet.update_cell(idx, column_index, reviewer_names)
