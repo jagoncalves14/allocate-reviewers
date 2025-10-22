@@ -36,6 +36,8 @@ EXPERIENCED_DEV_NAMES: if provided, each developer will always have a reviewer f
 
 
 # Usage guide
+
+## Local Development
 1. Enable "Google Sheets API" and get the credential.
 2. Create a file "some_name.json" in the same directory as "allocate_reviewer.py" lives, and copy the credential data 
 to the that file.
@@ -45,4 +47,54 @@ to the that file.
 6. Use poetry to spawn a virtual env 
 7. Install necessary packages by "poetry install"  
 8. Start allocating reviewers by "python allocate_reviewers.py"  
-9. Optionally you can set up a cron job to do the job periodically using the template in "execute.sh"
+
+## Automated Execution with GitHub Actions
+
+The script runs automatically every 15 days on Wednesdays at 9 AM UTC via GitHub Actions. The workflow checks if at least 15 days have passed since the last rotation before executing.
+
+### Setup Instructions
+
+1. **Go to your repository Settings**
+   - Navigate to Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+
+2. **Add the following secrets:**
+
+   | Secret Name | Description | Example |
+   |-------------|-------------|---------|
+   | `GOOGLE_CREDENTIALS_JSON` | Full JSON content of your Google Service Account credentials file | `{"type": "service_account", ...}` |
+   | `SHEET_NAME` | Name of your Google Sheet | `"Team Reviewers"` |
+   | `DEFAULT_REVIEWER_NUMBER` | Default number of reviewers per developer | `"1"` |
+   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Alice, Bob"` |
+
+3. **For `GOOGLE_CREDENTIALS_JSON`:**
+   - Open your Google Service Account credentials JSON file
+   - Copy the **entire file content** (including the outer braces)
+   - Paste it as the secret value
+
+4. **Manual Trigger:**
+   - Go to Actions tab in your GitHub repository
+   - Select "Allocate Reviewers" workflow
+   - Click "Run workflow" button
+   - This will force a rotation immediately, regardless of when the last rotation occurred
+   - The scheduled cron job will continue to run as normal
+
+### How It Works
+
+- **Scheduled Execution**: Every Wednesday at 9 AM UTC, the workflow checks if 15 days have passed since the last rotation
+- **Date Checking**: The script reads the most recent sprint date from the Google Sheet header
+- **Smart Execution**: Only runs if 15+ days have passed (or if manually triggered)
+- **Manual Override**: Manual triggers always execute, independent of the schedule
+
+### Column Header Format
+
+The system maintains the sprint schedule even when manual runs occur:
+
+- **Scheduled runs**: Create a new column with header format `DD-MM-YYYY`
+  - Example: `22-10-2025`
+
+- **Manual runs**: Update the existing column and modify the header to show when manual intervention happened
+  - First manual run: `22-10-2025 / Manual Run on: 23-10-2025`
+  - Subsequent manual runs: `22-10-2025 / Manual Run on: 24-10-2025`
+  
+The sprint date is always preserved, ensuring scheduled rotations remain on the 15-day cycle regardless of manual interventions.
