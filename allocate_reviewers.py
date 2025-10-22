@@ -137,20 +137,20 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         if last_col > column_index:
             for col in range(column_index + 1, last_col + 1):
                 col_letter = column_number_to_letter(col)
-                # Header: white background, light grey text
+                # Header: white background, light grey text, not bold
                 sheet.format(f"{col_letter}1", {
                     "backgroundColor": {"red": 1, "green": 1, "blue": 1},
                     "textFormat": {
                         "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                        "fontWeight": 400
+                        "bold": False
                     }
                 })
-                # Data rows: light grey text, normal weight
+                # Data rows: light grey text, not bold
                 if num_rows > 1:
                     sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
                         "textFormat": {
                             "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                            "fontWeight": 400
+                            "bold": False
                         }
                     })
         
@@ -160,7 +160,7 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
             "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
             "textFormat": {
                 "foregroundColor": {"red": 0, "green": 0, "blue": 0},
-                "fontWeight": 700
+                "bold": True
             }
         })
 
