@@ -6,10 +6,16 @@ Exit code 1: Rotation not needed yet
 """
 import os
 import sys
+import argparse
 from datetime import datetime
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
+from env_constants import (
+    EXPECTED_HEADERS_FOR_ALLOCATION,
+    EXPECTED_HEADERS_FOR_ROTATION,
+)
 
 DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
@@ -19,7 +25,7 @@ DRIVE_SCOPE = [
 MINIMUM_DAYS_BETWEEN_ROTATIONS = 15
 
 
-def get_last_rotation_date() -> datetime | None:
+def get_last_rotation_date(expected_headers: list[str]) -> datetime | None:
     """
     Read the Google Sheet and find the most recent rotation date.
     The date is stored in the header row after the first 3 columns.
@@ -47,9 +53,8 @@ def get_last_rotation_date() -> datetime | None:
         # Get the first row (headers)
         first_row = sheet.row_values(1)
 
-        # The first 3 columns are: Developer, Reviewer Number,
-        # Preferable Reviewers. After that, we have date columns
-        date_columns = first_row[3:]  # Skip the first 3 headers
+        # Skip the first N columns (before date columns)
+        date_columns = first_row[len(expected_headers):]
 
         if not date_columns:
             print("No previous rotations found in the sheet")
@@ -60,8 +65,10 @@ def get_last_rotation_date() -> datetime | None:
 
         # Check if it's a manual run header
         if " / Manual Run on:" in last_date_str:
-            # Extract the sprint date (before the " / Manual Run on:")
-            sprint_date_str = last_date_str.split(" / Manual Run on:")[0].strip()
+            # Extract the sprint date (before " / Manual Run on:")
+            sprint_date_str = (
+                last_date_str.split(" / Manual Run on:")[0].strip()
+            )
             try:
                 last_date = datetime.strptime(sprint_date_str, "%d-%m-%Y")
                 print(
@@ -91,13 +98,33 @@ def get_last_rotation_date() -> datetime | None:
                 )
                 return None
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"Error reading sheet: {exc}")
         sys.exit(1)
 
 
 def main() -> None:
-    last_rotation_date = get_last_rotation_date()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Check if rotation is needed (15+ days)"
+    )
+    parser.add_argument(
+        "--sheet-type",
+        choices=["fe-devs", "teams"],
+        default="fe-devs",
+        help="Type of sheet to check (default: fe-devs)",
+    )
+    args = parser.parse_args()
+
+    # Select appropriate headers based on sheet type
+    if args.sheet_type == "teams":
+        expected_headers = EXPECTED_HEADERS_FOR_ROTATION
+        print("Checking Teams sheet rotation...")
+    else:
+        expected_headers = EXPECTED_HEADERS_FOR_ALLOCATION
+        print("Checking FE Devs sheet rotation...")
+
+    last_rotation_date = get_last_rotation_date(expected_headers)
 
     if last_rotation_date is None:
         print("No previous rotation found - rotation is needed")

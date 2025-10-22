@@ -60,7 +60,18 @@ to the that file.
 
 ## Automated Execution with GitHub Actions
 
-The script runs automatically every 15 days on Wednesdays at 9 AM UTC via GitHub Actions. The workflow checks if at least 15 days have passed since the last rotation before executing.
+Two automated workflows run via GitHub Actions:
+
+### 1. FE Devs Allocation (Individual Developers)
+- Runs **every 15 days** on Wednesdays at 9:00 AM UTC
+- Checks if at least 15 days have passed since the last rotation
+- Allocates reviewers randomly with experienced dev guarantee
+
+### 2. Teams Rotation
+- Runs **every 15 days** on Wednesdays at 9:00 AM UTC (same schedule as FE Devs)
+- Checks if at least 15 days have passed since the last rotation
+- Rotates team reviewer assignments using index system
+- Ensures different rotation from previous assignments
 
 ### Setup Instructions
 
@@ -76,23 +87,32 @@ The script runs automatically every 15 days on Wednesdays at 9 AM UTC via GitHub
    | `SHEET_NAME` | Name of your Google Sheet | `"Team Reviewers"` |
    | `DEFAULT_REVIEWER_NUMBER` | Default number of reviewers per developer | `"1"` |
    | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Alice, Bob"` |
+   | `REVIEWERS_CONFIG_LIST` | Comma-separated ordered list of all developers/teams for rotation | `"Joao, Pavel, Shanna, Robert"` |
 
 3. **For `GOOGLE_CREDENTIALS_JSON`:**
    - Open your Google Service Account credentials JSON file
    - Copy the **entire file content** (including the outer braces)
    - Paste it as the secret value
 
-4. **Manual Trigger:**
+4. **Manual Triggers:**
+   
+   **For FE Devs (Individual):**
    - Go to Actions tab in your GitHub repository
    - Select "Allocate Reviewers" workflow
    - Click "Run workflow" button
    - This will force a rotation immediately, regardless of when the last rotation occurred
-   - The scheduled cron job will continue to run as normal
+   
+   **For Teams:**
+   - Go to Actions tab in your GitHub repository
+   - Select "Rotate Team Reviewers" workflow
+   - Click "Run workflow" button
+   - This will force a team rotation immediately, regardless of when the last rotation occurred
 
 ### How It Works
 
-- **Scheduled Execution**: Every Wednesday at 9 AM UTC, the workflow checks if 15 days have passed since the last rotation
-- **Date Checking**: The script reads the most recent sprint date from the Google Sheet header
+- **Scheduled Execution**: Every Wednesday at 9 AM UTC, both workflows check if 15 days have passed since their last rotation
+- **Date Checking**: Each script reads the most recent sprint/rotation date from its respective Google Sheet tab
+- **Independent Schedules**: FE Devs and Teams rotate independently (can be on different dates)
 - **Smart Execution**: Only runs if 15+ days have passed (or if manually triggered)
 - **Manual Override**: Manual triggers always execute, independent of the schedule
 
