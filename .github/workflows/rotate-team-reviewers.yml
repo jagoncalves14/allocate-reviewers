@@ -1,11 +1,8 @@
-name: Rotate Team Reviewers
+name: Allocate Teams Reviewers
 
 on:
-  schedule:
-    # Runs every Wednesday at 9:00 AM UTC (same time as FE Devs)
-    - cron: '0 9 * * 3'
   workflow_dispatch:
-    # Allows manual trigger from GitHub UI
+    # Manual trigger only - use "Run All Rotations" for scheduled runs
 
 jobs:
   rotate-team-reviewers:

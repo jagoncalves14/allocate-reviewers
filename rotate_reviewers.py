@@ -40,7 +40,8 @@ Examples:
 - Team needs 3 reviewers, has 5 members → 3 members from team
   (least assigned)
 
-Runs every 15 days on Wednesdays or manually via GitHub Actions.
+Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
+or manually via GitHub Actions.
 """
 
 import traceback

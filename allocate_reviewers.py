@@ -41,7 +41,7 @@ Allocation Process:
 Result: Joao → reviewed by Pavel, Shanna
 
 SCHEDULE:
-- Runs every 15 days on Wednesdays at 9:00 AM UTC
+- Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
 - Can be triggered manually via GitHub Actions
 - Manual runs update existing column, scheduled runs create new column
 """

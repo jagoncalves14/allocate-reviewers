@@ -60,20 +60,43 @@ to the that file.
 
 ## Automated Execution with GitHub Actions
 
-Two automated workflows run via GitHub Actions:
+### Automated Workflow (Scheduled) 🤖
 
-### 1. FE Devs Allocation (Individual Developers)
-- Runs **every 15 days** on Wednesdays at 9:00 AM UTC
-- Checks if at least 15 days have passed since the last rotation
-- Allocates reviewers randomly with experienced dev guarantee
-- **Load Balanced**: Prioritizes reviewers with fewer assignments to ensure fair distribution
+**Workflow: "Run All Rotations"** (`.github/workflows/run-all-rotations.yml`)
 
-### 2. Teams Rotation
-- Runs **every 15 days** on Wednesdays at 9:00 AM UTC (same schedule as FE Devs)
-- Checks if at least 15 days have passed since the last rotation
-- Assigns reviewers to teams based on team composition
-- Each team can specify its own "Number of Reviewers" in the sheet (uses `DEFAULT_REVIEWER_NUMBER` if empty)
-- **Load Balanced**: Tracks how many teams each developer is reviewing and prioritizes those with fewer assignments
+This is the **only workflow with a cron schedule**. It runs both rotations sequentially:
+
+1. **FE Devs Allocation** (Individual Developers)
+   - Checks if at least 15 days have passed since the last rotation
+   - Allocates reviewers randomly with experienced dev guarantee
+   - **Load Balanced**: Prioritizes reviewers with fewer assignments
+
+2. **Teams Rotation**
+   - Checks if at least 15 days have passed since the last rotation
+   - Assigns reviewers to teams based on team composition
+   - Each team can specify its own "Number of Reviewers" in the sheet
+   - **Load Balanced**: Tracks how many teams each developer is reviewing
+
+**Schedule:** Every Wednesday at 5:00 AM Finland Time (3:00 AM UTC)
+
+**Benefits:**
+- ✅ **No Race Conditions**: Runs sequentially, not simultaneously
+- ✅ **Independent Schedules**: Each rotation runs only if needed (15+ days)
+- ✅ **Automated**: Runs without manual intervention
+- ✅ **Clear Summary**: Shows which rotations ran/skipped
+
+### Manual Workflows (On-Demand Only) 🔧
+
+Two additional workflows are available for **manual execution only** (no cron):
+- **"Allocate FE Devs Reviews"** - Run FE Devs allocation only
+- **"Allocate Teams Reviewers"** - Run Teams rotation only
+
+**Use cases:**
+- Need to update only FE Devs without touching Teams
+- Need to update only Teams without touching FE Devs
+- Want granular control over individual rotations
+
+### Assignment Logic
 
 **Assignment Logic** (for each team with N reviewers needed):
 - **0 team members**: Assigns N experienced developers (load-balanced to those with fewest team assignments)
@@ -111,17 +134,21 @@ Two automated workflows run via GitHub Actions:
 
 4. **Manual Triggers:**
    
-   **For FE Devs (Individual):**
-   - Go to Actions tab in your GitHub repository
-   - Select "Allocate Reviewers" workflow
-   - Click "Run workflow" button
-   - This will force a rotation immediately, regardless of when the last rotation occurred
+   All workflows can be triggered manually from the GitHub Actions tab:
    
-   **For Teams:**
-   - Go to Actions tab in your GitHub repository
-   - Select "Rotate Team Reviewers" workflow
-   - Click "Run workflow" button
-   - This will force a team rotation immediately, regardless of when the last rotation occurred
+   | Workflow | What It Does | When to Use |
+   |----------|-------------|-------------|
+   | **Run All Rotations** | Runs both FE Devs + Teams | Most common - update everything |
+   | **Allocate FE Devs Reviews** | Runs FE Devs only | Need to update only individual devs |
+   | **Allocate Teams Reviewers** | Runs Teams only | Need to update only teams |
+   
+   **How to trigger:**
+   1. Go to **Actions** tab in your repository
+   2. Select the workflow you want to run
+   3. Click **"Run workflow"** dropdown
+   4. Click **"Run workflow"** button
+   
+   ⚠️ **Note**: Manual triggers always execute immediately, regardless of the 15-day schedule
 
 ### Google Sheet Structure
 
