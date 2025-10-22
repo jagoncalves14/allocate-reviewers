@@ -1,0 +1,68 @@
+name: Run Teams Review Rotation
+
+on:
+  workflow_dispatch:
+    # Manual trigger only - use "Run All Review Rotations" for scheduled runs
+
+jobs:
+  teams-review-rotation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: poetry install --without dev
+      
+      - name: Create credentials file
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+      
+      - name: Check if rotation is needed
+        id: check_rotation
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger detected - forcing rotation"
+            echo "run_rotation=true" >> $GITHUB_OUTPUT
+          else
+            echo "Scheduled run - checking if 15 days have passed"
+            poetry run python check_rotation_needed.py --sheet-type teams
+            if [ $? -eq 0 ]; then
+              echo "Rotation needed"
+              echo "run_rotation=true" >> $GITHUB_OUTPUT
+            else
+              echo "Rotation not needed yet"
+              echo "run_rotation=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+      
+      - name: Run team reviewer rotation
+        if: steps.check_rotation.outputs.run_rotation == 'true'
+        run: poetry run python rotate_reviewers.py
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+          DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
+          EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      
+      - name: Clean up credentials
+        if: always()
+        run: rm -f credentials.json
+

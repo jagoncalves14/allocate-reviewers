@@ -1,0 +1,124 @@
+name: Run All Review Rotations
+
+on:
+  schedule:
+    # Runs every Wednesday at 5:00 AM Finland Time (3:00 AM UTC)
+    - cron: '0 3 * * 3'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub UI
+
+jobs:
+  all-review-rotation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: poetry install --without dev
+      
+      - name: Create credentials file
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+      
+      # ========================================
+      # 1. FE DEVS ALLOCATION (Individual Devs)
+      # ========================================
+      
+      - name: Check if FE Devs rotation is needed
+        id: check_fe_devs
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger - forcing FE Devs rotation"
+            echo "run_rotation=true" >> $GITHUB_OUTPUT
+          else
+            echo "Scheduled run - checking FE Devs rotation (15 days)"
+            poetry run python check_rotation_needed.py --sheet-type fe-devs
+            if [ $? -eq 0 ]; then
+              echo "FE Devs rotation needed"
+              echo "run_rotation=true" >> $GITHUB_OUTPUT
+            else
+              echo "FE Devs rotation not needed yet"
+              echo "run_rotation=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+      
+      - name: Run FE Devs allocation
+        if: steps.check_fe_devs.outputs.run_rotation == 'true'
+        run: poetry run python allocate_reviewers.py
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+          DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
+          EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      
+      # ========================================
+      # 2. TEAMS ROTATION
+      # ========================================
+      
+      - name: Check if Teams rotation is needed
+        id: check_teams
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger - forcing Teams rotation"
+            echo "run_rotation=true" >> $GITHUB_OUTPUT
+          else
+            echo "Scheduled run - checking Teams rotation (15 days)"
+            poetry run python check_rotation_needed.py --sheet-type teams
+            if [ $? -eq 0 ]; then
+              echo "Teams rotation needed"
+              echo "run_rotation=true" >> $GITHUB_OUTPUT
+            else
+              echo "Teams rotation not needed yet"
+              echo "run_rotation=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+      
+      - name: Run Teams rotation
+        if: steps.check_teams.outputs.run_rotation == 'true'
+        run: poetry run python rotate_reviewers.py
+        env:
+          CREDENTIAL_FILE: credentials.json
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+          DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
+          EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      
+      # ========================================
+      # CLEANUP
+      # ========================================
+      
+      - name: Clean up credentials
+        if: always()
+        run: rm -f credentials.json
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "==================================="
+          echo "ROTATION SUMMARY"
+          echo "==================================="
+          echo "FE Devs: ${{ steps.check_fe_devs.outputs.run_rotation == 'true' && '✅ Completed' || '⏭️  Skipped (not needed)' }}"
+          echo "Teams:   ${{ steps.check_teams.outputs.run_rotation == 'true' && '✅ Completed' || '⏭️  Skipped (not needed)' }}"
+          echo "==================================="
+
