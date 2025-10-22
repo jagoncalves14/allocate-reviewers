@@ -24,7 +24,7 @@ from env_constants import (
     DEFAULT_REVIEWER_NUMBER,
     ALLOCATION_INDEXES_HEADER,
     REVIEWER_NUMBER_HEADER,
-    DEVELOPER_HEADER,
+    TEAM_DEVELOPER_HEADER,
 )
 
 
@@ -153,7 +153,9 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         )
         for record in records:
             developer = next(
-                dev for dev in devs if dev.name == record["Developer"]
+                dev
+                for dev in devs
+                if dev.name == record[TEAM_DEVELOPER_HEADER]
             )
             reviewer_indexes = ", ".join(sorted(developer.reviewer_indexes))
             allocation_column.append(reviewer_indexes)
@@ -242,7 +244,7 @@ if __name__ == "__main__":
         developers = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
             values_mapper=lambda record: Developer(
-                name=record[DEVELOPER_HEADER],
+                name=record[TEAM_DEVELOPER_HEADER],
                 reviewer_number=int(
                     record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
                 ),
