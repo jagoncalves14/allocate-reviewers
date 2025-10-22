@@ -25,7 +25,9 @@ DRIVE_SCOPE = [
 MINIMUM_DAYS_BETWEEN_ROTATIONS = 15
 
 
-def get_last_rotation_date(expected_headers: list[str]) -> datetime | None:
+def get_last_rotation_date(
+    expected_headers: list[str], tab_name: str = "FE Devs"
+) -> datetime | None:
     """
     Read the Google Sheet and find the most recent rotation date.
     The date is stored in the header row after the first 3 columns.
@@ -48,7 +50,8 @@ def get_last_rotation_date(expected_headers: list[str]) -> datetime | None:
             CREDENTIAL_FILE, DRIVE_SCOPE
         )
         client = gspread.authorize(credential)
-        sheet = client.open(SHEET_NAME).sheet1
+        spreadsheet = client.open(SHEET_NAME)
+        sheet = spreadsheet.worksheet(tab_name)
 
         # Get the first row (headers)
         first_row = sheet.row_values(1)
@@ -116,15 +119,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Select appropriate headers based on sheet type
+    # Select appropriate headers and tab based on sheet type
     if args.sheet_type == "teams":
         expected_headers = EXPECTED_HEADERS_FOR_ROTATION
+        tab_name = "Teams"
         print("Checking Teams sheet rotation...")
     else:
         expected_headers = EXPECTED_HEADERS_FOR_ALLOCATION
+        tab_name = "FE Devs"
         print("Checking FE Devs sheet rotation...")
 
-    last_rotation_date = get_last_rotation_date(expected_headers)
+    last_rotation_date = get_last_rotation_date(expected_headers, tab_name)
 
     if last_rotation_date is None:
         print("No previous rotation found - rotation is needed")

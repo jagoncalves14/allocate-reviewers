@@ -15,6 +15,7 @@ from utilities import (
     write_exception_to_sheet,
     load_developers_from_sheet,
     column_number_to_letter,
+    update_current_team_rotation,
 )
 from data_types import Developer
 from env_constants import (
@@ -37,7 +38,7 @@ def arrange_developers(devs: List[Developer]) -> None:
 
 
 def get_previous_allocation_indexes() -> dict[str, list]:
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet("Teams") as sheet:
         developer_names = sheet.col_values(1)
         allocation_indexes_ = sheet.col_values(
             len(EXPECTED_HEADERS_FOR_ROTATION)
@@ -146,7 +147,7 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
     reviewers_column_header = datetime.now().strftime("%d-%m-%Y")
     reviewers_column = [reviewers_column_header]
 
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet("Teams") as sheet:
         records = sheet.get_all_records(
             expected_headers=EXPECTED_HEADERS_FOR_ROTATION
         )
@@ -235,6 +236,8 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
 
 if __name__ == "__main__":
+    import os
+
     try:
         developers = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
@@ -249,13 +252,27 @@ if __name__ == "__main__":
                     else set()
                 ),
             ),
+            tab_name="Teams",
         )
         arrange_developers(developers)
         allocation_indexes = get_previous_allocation_indexes()
         rotate_reviewers(developers, allocation_indexes)
-        write_reviewers_to_sheet(developers)
+
+        # Check if this is a manual run
+        is_manual_run = os.environ.get("MANUAL_RUN", "false") == "true"
+
+        if is_manual_run:
+            print("Manual run detected - updating current rotation")
+            update_current_team_rotation(
+                EXPECTED_HEADERS_FOR_ROTATION, developers
+            )
+        else:
+            print("Scheduled run - creating new rotation")
+            write_reviewers_to_sheet(developers)
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc()
         write_exception_to_sheet(
-            EXPECTED_HEADERS_FOR_ROTATION, str(exc) or str(type(exc))
+            EXPECTED_HEADERS_FOR_ROTATION,
+            str(exc) or str(type(exc)),
+            tab_name="Teams",
         )

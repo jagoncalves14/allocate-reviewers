@@ -43,8 +43,9 @@ def load_developers_from_sheet(
         if record[PREFERABLE_REVIEWER_HEADER]
         else set(),
     ),
+    tab_name: str = "FE Devs",
 ) -> List[Developer]:
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet(tab_name) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
 
     input_developers = map(
@@ -56,7 +57,7 @@ def load_developers_from_sheet(
 
 
 @contextmanager
-def get_remote_sheet() -> Worksheet:
+def get_remote_sheet(tab_name: str = "FE Devs") -> Worksheet:
     CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
     SHEET_NAME = os.environ.get("SHEET_NAME")
 
@@ -64,7 +65,8 @@ def get_remote_sheet() -> Worksheet:
         CREDENTIAL_FILE, DRIVE_SCOPE
     )
     client = gspread.authorize(credential)
-    sheet = client.open(SHEET_NAME).sheet1
+    spreadsheet = client.open(SHEET_NAME)
+    sheet = spreadsheet.worksheet(tab_name)
     yield sheet
     client.session.close()
 
@@ -72,11 +74,12 @@ def get_remote_sheet() -> Worksheet:
 def write_exception_to_sheet(
     expected_headers: List[str],
     error: str,
+    tab_name: str = "FE Devs",
 ) -> None:
     column_index = len(expected_headers) + 1
     new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
 
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet(tab_name) as sheet:
         sheet.insert_cols([new_column], column_index)
 
 
@@ -128,43 +131,70 @@ def update_current_sprint_reviewers(
             )
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, column_index, reviewer_names)
-        
+
         # Style columns (optional - skip if rate limited)
         try:
             num_rows = len(records) + 1
             last_col = sheet.col_count
-            
+
             # Apply light blue background ONLY to header of current column
             col_letter = column_number_to_letter(column_index)
-            sheet.format(f"{col_letter}1", {
-                "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
-                "textFormat": {
-                    "foregroundColor": {"red": 0, "green": 0, "blue": 0},
-                    "bold": True
-                }
-            })
-            
+            sheet.format(
+                f"{col_letter}1",
+                {
+                    "backgroundColor": {
+                        "red": 0.85,
+                        "green": 0.92,
+                        "blue": 1,
+                    },
+                    "textFormat": {
+                        "foregroundColor": {"red": 0, "green": 0, "blue": 0},
+                        "bold": True,
+                    },
+                },
+            )
+
             # Style older columns (if quota allows)
             if last_col > column_index:
-                for col in range(column_index + 1, min(last_col + 1, column_index + 6)):
+                for col in range(
+                    column_index + 1, min(last_col + 1, column_index + 6)
+                ):
                     col_letter = column_number_to_letter(col)
-                    sheet.format(f"{col_letter}1", {
-                        "backgroundColor": {"red": 1, "green": 1, "blue": 1},
-                        "textFormat": {
-                            "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                            "bold": False
-                        }
-                    })
-                    if num_rows > 1:
-                        sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
+                    sheet.format(
+                        f"{col_letter}1",
+                        {
+                            "backgroundColor": {
+                                "red": 1,
+                                "green": 1,
+                                "blue": 1,
+                            },
                             "textFormat": {
-                                "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                                "bold": False
-                            }
-                        })
-        except Exception as e:
+                                "foregroundColor": {
+                                    "red": 0.6,
+                                    "green": 0.6,
+                                    "blue": 0.6,
+                                },
+                                "bold": False,
+                            },
+                        },
+                    )
+                    if num_rows > 1:
+                        sheet.format(
+                            f"{col_letter}2:{col_letter}{num_rows}",
+                            {
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0.6,
+                                        "green": 0.6,
+                                        "blue": 0.6,
+                                    },
+                                    "bold": False,
+                                }
+                            },
+                        )
+        except Exception as e:  # noqa: BLE001
             print(f"Note: Styling skipped (quota or other issue): {e}")
-        
+
         # Set column width to 280px for manual runs
         body = {
             "requests": [
@@ -180,6 +210,154 @@ def update_current_sprint_reviewers(
                             "pixelSize": 280
                         },
                         "fields": "pixelSize"
+                    }
+                }
+            ]
+        }
+        sheet.spreadsheet.batch_update(body)
+
+
+def update_current_team_rotation(
+    expected_headers: List[str], devs: List[Developer]
+) -> None:
+    """
+    Update reviewers in the current rotation column (for Teams manual runs)
+    """
+    from env_constants import ALLOCATION_INDEXES_HEADER
+
+    allocation_column_index = len(expected_headers)
+    reviewers_column_index = allocation_column_index + 1
+
+    with get_remote_sheet("Teams") as sheet:
+        # Get the current header
+        first_row = sheet.row_values(1)
+        current_header = (
+            first_row[reviewers_column_index - 1]
+            if len(first_row) >= reviewers_column_index
+            else None
+        )
+
+        if not current_header or current_header.startswith("Exception"):
+            # No existing rotation column or exception, create new one
+            print("No valid rotation found, creating new column")
+            from rotate_reviewers import write_reviewers_to_sheet
+
+            write_reviewers_to_sheet(devs)
+            return
+
+        # Extract original rotation date from header
+        if " / Manual Run on:" in current_header:
+            # Already has manual run info, extract rotation date
+            rotation_date = (
+                current_header.split(" / Manual Run on:")[0].strip()
+            )
+        else:
+            # First manual run on this rotation
+            rotation_date = current_header
+
+        # Create new header with manual run info
+        today = datetime.now().strftime("%d-%m-%Y")
+        new_header = f"{rotation_date} / Manual Run on: {today}"
+
+        # Update the columns
+        records = sheet.get_all_records(expected_headers=expected_headers)
+
+        # Update Indexes column
+        for idx, record in enumerate(records, start=2):
+            developer = next(
+                dev for dev in devs if dev.name == record["Developer"]
+            )
+            reviewer_indexes = ", ".join(sorted(developer.reviewer_indexes))
+            sheet.update_cell(idx, allocation_column_index, reviewer_indexes)
+
+        # Update reviewers column header
+        sheet.update_cell(1, reviewers_column_index, new_header)
+
+        # Update reviewer assignments
+        for idx, record in enumerate(records, start=2):
+            developer = next(
+                dev for dev in devs if dev.name == record["Developer"]
+            )
+            reviewer_names = ", ".join(sorted(developer.reviewer_names))
+            sheet.update_cell(idx, reviewers_column_index, reviewer_names)
+
+        # Style columns (optional - skip if rate limited)
+        try:
+            num_rows = len(records) + 1
+            last_col = sheet.col_count
+
+            # Apply light blue background ONLY to header of current column
+            col_letter = column_number_to_letter(reviewers_column_index)
+            sheet.format(
+                f"{col_letter}1",
+                {
+                    "backgroundColor": {
+                        "red": 0.85,
+                        "green": 0.92,
+                        "blue": 1,
+                    },
+                    "textFormat": {
+                        "foregroundColor": {"red": 0, "green": 0, "blue": 0},
+                        "bold": True,
+                    },
+                },
+            )
+
+            # Style older columns (if quota allows)
+            if last_col > reviewers_column_index:
+                for col in range(
+                    reviewers_column_index + 1,
+                    min(last_col + 1, reviewers_column_index + 6),
+                ):
+                    col_letter = column_number_to_letter(col)
+                    sheet.format(
+                        f"{col_letter}1",
+                        {
+                            "backgroundColor": {
+                                "red": 1,
+                                "green": 1,
+                                "blue": 1,
+                            },
+                            "textFormat": {
+                                "foregroundColor": {
+                                    "red": 0.6,
+                                    "green": 0.6,
+                                    "blue": 0.6,
+                                },
+                                "bold": False,
+                            },
+                        },
+                    )
+                    if num_rows > 1:
+                        sheet.format(
+                            f"{col_letter}2:{col_letter}{num_rows}",
+                            {
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0.6,
+                                        "green": 0.6,
+                                        "blue": 0.6,
+                                    },
+                                    "bold": False,
+                                }
+                            },
+                        )
+        except Exception as e:  # noqa: BLE001
+            print(f"Note: Styling skipped (quota or other issue): {e}")
+
+        # Set column width to 280px for manual runs
+        body = {
+            "requests": [
+                {
+                    "updateDimensionProperties": {
+                        "range": {
+                            "sheetId": sheet.id,
+                            "dimension": "COLUMNS",
+                            "startIndex": reviewers_column_index - 1,
+                            "endIndex": reviewers_column_index,
+                        },
+                        "properties": {"pixelSize": 280},
+                        "fields": "pixelSize",
                     }
                 }
             ]
