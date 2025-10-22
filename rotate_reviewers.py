@@ -211,9 +211,9 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
                             },
                             "textFormat": {
                                 "foregroundColor": {
-                                    "red": 0.6,
-                                    "green": 0.6,
-                                    "blue": 0.6,
+                                    "red": 0.3,
+                                    "green": 0.3,
+                                    "blue": 0.3,
                                 },
                                 "bold": False,
                             },
@@ -226,9 +226,9 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
                             {
                                 "textFormat": {
                                     "foregroundColor": {
-                                        "red": 0.6,
-                                        "green": 0.6,
-                                        "blue": 0.6,
+                                        "red": 0.3,
+                                        "green": 0.3,
+                                        "blue": 0.3,
                                     },
                                     "bold": False,
                                 }
