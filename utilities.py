@@ -118,3 +118,38 @@ def update_current_sprint_reviewers(
             )
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, column_index, reviewer_names)
+        
+        # Clear background color from all date columns (D onwards)
+        last_col = sheet.col_count
+        if last_col >= column_index:
+            range_to_clear = f"{chr(64 + column_index + 1)}1:{chr(64 + last_col)}{len(records) + 1}"
+            sheet.format(range_to_clear, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+        
+        # Apply background color to the current column (most recent)
+        num_rows = len(records) + 1
+        col_letter = chr(64 + column_index)
+        range_to_color = f"{col_letter}1:{col_letter}{num_rows}"
+        sheet.format(range_to_color, {
+            "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1}  # Light blue
+        })
+        
+        # Set column width to 280px for manual runs
+        body = {
+            "requests": [
+                {
+                    "updateDimensionProperties": {
+                        "range": {
+                            "sheetId": sheet.id,
+                            "dimension": "COLUMNS",
+                            "startIndex": column_index - 1,
+                            "endIndex": column_index
+                        },
+                        "properties": {
+                            "pixelSize": 280
+                        },
+                        "fields": "pixelSize"
+                    }
+                }
+            ]
+        }
+        sheet.spreadsheet.batch_update(body)

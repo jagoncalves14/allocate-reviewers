@@ -11,7 +11,7 @@ DRIVE_SCOPE = [
 SHEET_NAME = os.environ.get("SHEET_NAME")
 
 DEVELOPER_HEADER = "Developer"
-REVIEWER_NUMBER_HEADER = "Reviewer Number"
+REVIEWER_NUMBER_HEADER = "Number of Reviewers"
 PREFERABLE_REVIEWER_HEADER = "Preferable Reviewers"
 ALLOCATION_INDEXES_HEADER = "Indexes"
 

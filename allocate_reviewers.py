@@ -66,17 +66,15 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             return max(reviewer_number - len(chosen_reviewer_names), 0)
 
         def experienced_reviewer_number_getter() -> int:
-            experienced_reviewer_chosen = next(
-                (
-                    name
-                    for name in chosen_reviewer_names
-                    if name in valid_experienced_dev_names
-                ),
-                None,
+            # Check if we already have an experienced reviewer
+            has_experienced = any(
+                name in valid_experienced_dev_names
+                for name in chosen_reviewer_names
             )
-            if experienced_reviewer_chosen:
+            if has_experienced:
                 return 0
-            return max(min(1, reviewer_number - len(chosen_reviewer_names)), 0)
+            # EVERYONE must have at least 1 experienced reviewer
+            return 1
 
         configures = [
             SelectableConfigure(
@@ -86,16 +84,6 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             SelectableConfigure(
                 names=valid_experienced_dev_names,
                 number_getter=experienced_reviewer_number_getter,
-            ),
-            SelectableConfigure(
-                names=set(
-                    (
-                        name
-                        for name in all_dev_names
-                        if name not in valid_experienced_dev_names
-                    )
-                ),
-                number_getter=selectable_number_getter,
             ),
             SelectableConfigure(
                 names=all_dev_names,
@@ -141,6 +129,20 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
             )
             new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
+        
+        # Clear background color from all date columns (D onwards)
+        last_col = sheet.col_count
+        if last_col >= column_index:
+            range_to_clear = f"{chr(64 + column_index + 1)}1:{chr(64 + last_col)}{len(records) + 1}"
+            sheet.format(range_to_clear, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+        
+        # Apply background color to the new column (most recent)
+        num_rows = len(records) + 1
+        new_col_letter = chr(64 + column_index)
+        range_to_color = f"{new_col_letter}1:{new_col_letter}{num_rows}"
+        sheet.format(range_to_color, {
+            "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1}  # Light blue
+        })
 
 
 if __name__ == "__main__":
