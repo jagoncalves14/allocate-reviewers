@@ -62,7 +62,7 @@ to the that file.
 
 ### Automated Workflow (Scheduled) 🤖
 
-**Workflow: "Run All Rotations"** (`.github/workflows/run-all-rotations.yml`)
+**Workflow: "Run All Review Rotations"** (`.github/workflows/run-all-rotations.yml`)
 
 This is the **only workflow with a cron schedule**. It runs both rotations sequentially:
 
@@ -88,8 +88,8 @@ This is the **only workflow with a cron schedule**. It runs both rotations seque
 ### Manual Workflows (On-Demand Only) 🔧
 
 Two additional workflows are available for **manual execution only** (no cron):
-- **"Allocate FE Devs Reviews"** - Run FE Devs allocation only
-- **"Allocate Teams Reviewers"** - Run Teams rotation only
+- **"Run FE Devs Review Rotation"** - Run FE Devs allocation only
+- **"Run Teams Review Rotation"** - Run Teams rotation only
 
 **Use cases:**
 - Need to update only FE Devs without touching Teams
@@ -138,9 +138,9 @@ Two additional workflows are available for **manual execution only** (no cron):
    
    | Workflow | What It Does | When to Use |
    |----------|-------------|-------------|
-   | **Run All Rotations** | Runs both FE Devs + Teams | Most common - update everything |
-   | **Allocate FE Devs Reviews** | Runs FE Devs only | Need to update only individual devs |
-   | **Allocate Teams Reviewers** | Runs Teams only | Need to update only teams |
+   | **Run All Review Rotations** | Runs both FE Devs + Teams | Most common - update everything |
+   | **Run FE Devs Review Rotation** | Runs FE Devs only | Need to update only individual devs |
+   | **Run Teams Review Rotation** | Runs Teams only | Need to update only teams |
    
    **How to trigger:**
    1. Go to **Actions** tab in your repository

@@ -1,8 +1,8 @@
-name: Allocate Teams Reviewers
+name: Run Teams Review Rotation
 
 on:
   workflow_dispatch:
-    # Manual trigger only - use "Run All Rotations" for scheduled runs
+    # Manual trigger only - use "Run All Review Rotations" for scheduled runs
 
 jobs:
   rotate-team-reviewers:

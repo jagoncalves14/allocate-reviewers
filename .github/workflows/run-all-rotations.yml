@@ -1,4 +1,4 @@
-name: Run All Rotations
+name: Run All Review Rotations
 
 on:
   schedule:
