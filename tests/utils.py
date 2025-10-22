@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from allocate_reviewers import Developer
+from data_types import Developer
 
 
 def mutate_devs(

@@ -1,81 +1,22 @@
 import os
 import random
 import traceback
-from contextlib import contextmanager
-from dataclasses import dataclass, field
+from typing import List, Set
 from datetime import datetime
-from typing import Callable, List, Set
 
-import gspread
 from dotenv import find_dotenv, load_dotenv
-from gspread import Worksheet
-from oauth2client.service_account import ServiceAccountCredentials
+
+from data_types import Developer, SelectableConfigure
+from env_constants import (
+    EXPECTED_HEADERS_FOR_ALLOCATION,
+)
+from utilities import (
+    load_developers_from_sheet,
+    write_exception_to_sheet,
+    get_remote_sheet,
+)
 
 load_dotenv(find_dotenv())
-
-DEFAULT_REVIEWER_NUMBER = int(
-    os.environ.get("DEFAULT_REVIEWER_NUMBER") or "1"
-)
-EXPERIENCED_DEV_NAMES = set(
-    os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", ")
-)
-
-DRIVE_SCOPE = [
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file",
-]
-EXPECTED_HEADERS = ["Developer", "Reviewer Number", "Preferable Reviewers"]
-
-
-@dataclass
-class Developer:
-    name: str
-    reviewer_number: int
-    preferable_reviewer_names: Set[str]
-    reviewer_names: Set[str] = field(default_factory=set)
-    review_for: Set[str] = field(default_factory=set)
-
-
-@dataclass
-class SelectableConfigure:
-    names: Set[str]
-    number_getter: Callable[[], int]
-
-
-@contextmanager
-def get_remote_sheet() -> Worksheet:
-    CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
-    SHEET_NAME = os.environ.get("SHEET_NAME")
-
-    credential = ServiceAccountCredentials.from_json_keyfile_name(
-        CREDENTIAL_FILE, DRIVE_SCOPE
-    )
-    client = gspread.authorize(credential)
-    sheet = client.open(SHEET_NAME).sheet1
-    yield sheet
-    client.session.close()
-
-
-def load_developers_from_sheet() -> List[Developer]:
-    with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-
-    input_developers = map(
-        lambda record: Developer(
-            name=record["Developer"],
-            reviewer_number=int(
-                record["Reviewer Number"] or DEFAULT_REVIEWER_NUMBER
-            ),
-            preferable_reviewer_names=set(
-                (record["Preferable Reviewers"]).split(", ")
-            )
-            if record["Preferable Reviewers"]
-            else set(),
-        ),
-        records,
-    )
-
-    return list(input_developers)
 
 
 def shuffle_and_get_the_most_available_names(
@@ -116,11 +57,9 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
 
-    for developer in devs:
+    for dev in devs:
         chosen_reviewer_names: Set[str] = set()
-        reviewer_number = min(
-            developer.reviewer_number, len(all_dev_names) - 1
-        )
+        reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
 
         def selectable_number_getter() -> int:
             return max(reviewer_number - len(chosen_reviewer_names), 0)
@@ -140,7 +79,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         configures = [
             SelectableConfigure(
-                names=developer.preferable_reviewer_names,
+                names=dev.preferable_reviewer_names,
                 number_getter=selectable_number_getter,
             ),
             SelectableConfigure(
@@ -168,7 +107,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
                 (
                     name
                     for name in configure.names
-                    if name not in [developer.name, *chosen_reviewer_names]
+                    if name not in [dev.name, *chosen_reviewer_names]
                 )
             )
             selectable_number = configure.number_getter()
@@ -179,17 +118,19 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
         reviewers = (dev for dev in devs if dev.name in chosen_reviewer_names)
         for reviewer in reviewers:
-            developer.reviewer_names.add(reviewer.name)
-            reviewer.review_for.add(developer.name)
+            dev.reviewer_names.add(reviewer.name)
+            reviewer.review_for.add(dev.name)
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
-    column_index = len(EXPECTED_HEADERS) + 1
+    column_index = len(EXPECTED_HEADERS_FOR_ALLOCATION) + 1
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
     with get_remote_sheet() as sheet:
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
+        records = sheet.get_all_records(
+            expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION
+        )
         for record in records:
             developer = next(
                 dev for dev in devs if dev.name == record["Developer"]
@@ -201,67 +142,9 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         sheet.insert_cols([new_column], column_index)
 
 
-def update_current_sprint_reviewers(devs: List[Developer]) -> None:
-    """Update reviewers in the current sprint column (for manual runs)"""
-    column_index = len(EXPECTED_HEADERS) + 1
-
-    with get_remote_sheet() as sheet:
-        # Get the current header
-        first_row = sheet.row_values(1)
-        current_header = (
-            first_row[column_index - 1]
-            if len(first_row) >= column_index
-            else None
-        )
-
-        if not current_header:
-            # No existing sprint column, create one
-            print("No existing sprint found, creating new column")
-            write_reviewers_to_sheet(devs)
-            return
-
-        # Extract original sprint date from header
-        if " / Manual Run on:" in current_header:
-            # Already has manual run info, extract sprint date
-            sprint_date = current_header.split(" / Manual Run on:")[0].strip()
-        else:
-            # First manual run on this sprint
-            sprint_date = current_header
-
-        # Create new header with manual run info
-        today = datetime.now().strftime("%d-%m-%Y")
-        new_header = f"{sprint_date} / Manual Run on: {today}"
-
-        # Update the column
-        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-
-        # Update header
-        sheet.update_cell(1, column_index, new_header)
-
-        # Update reviewer assignments
-        for idx, record in enumerate(records, start=2):
-            developer = next(
-                dev for dev in devs if dev.name == record["Developer"]
-            )
-            reviewer_names = ", ".join(
-                sorted(developer.reviewer_names)
-            )
-            sheet.update_cell(idx, column_index, reviewer_names)
-
-
-def write_exception_to_sheet(error: str) -> None:
-    column_index = len(EXPECTED_HEADERS) + 1
-    new_column = [
-        f"Exception {datetime.now().strftime('%d-%m-%Y')}", error
-    ]
-
-    with get_remote_sheet() as sheet:
-        sheet.insert_cols([new_column], column_index)
-
-
 if __name__ == "__main__":
     try:
-        developers = load_developers_from_sheet()
+        developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ALLOCATION)
         allocate_reviewers(developers)
 
         # Manual runs update existing column, scheduled runs create new column
@@ -274,4 +157,6 @@ if __name__ == "__main__":
             write_reviewers_to_sheet(developers)
     except Exception as exc:
         traceback.print_exc()
-        write_exception_to_sheet(str(exc) or str(type(exc)))
+        write_exception_to_sheet(
+            EXPECTED_HEADERS_FOR_ALLOCATION, str(exc) or str(type(exc))
+        )

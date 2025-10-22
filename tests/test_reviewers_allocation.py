@@ -5,10 +5,10 @@ from unittest.mock import patch
 import pytest
 
 from allocate_reviewers import (
-    Developer,
     allocate_reviewers,
     shuffle_and_get_the_most_available_names,
 )
+from data_types import Developer
 from tests.conftest import DEVS
 from tests.utils import mutate_devs
 

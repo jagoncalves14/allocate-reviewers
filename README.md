@@ -1,13 +1,17 @@
 # Functionality
-A simple script to assign developers to review each others' code. The assignment is done randomly.
-Nonetheless, it is possible to control the preferable reviewers for each specific developer.
+Simple scripts to assign developers to review each other's code. The scripts will read the configuration from a Google 
+sheet, assign reviewers for developers in the list, and write back the result to the Google sheet. Developers can check 
+the name of their reviewers by accessing the link to the Google sheet.
 
-The script will read the configuration from a Google sheet, assign reviewers for developers in the list,
-and write back the result to the Google sheet. Developers can check the name of their reviewers by accessing 
-the link to the Google sheet.
+A developer from the team should set up a cron job to execute one of the scripts periodically.
 
-A developer from the team should set up a cron job to execute the script periodically to make sure the assignment is 
-rotated so that all developers have a chance to read each others' code.
+## Reviewers allocation script
+The assignment is done randomly. Nonetheless, it is possible to control the preferable reviewers for each specific 
+developer.
+
+## Reviewers rotation script
+The assignment is rotated orderly so that all developers have a chance to read each other's code.
+
 
 # Configurable parameters
 
@@ -16,11 +20,13 @@ rotated so that all developers have a chance to read each others' code.
 
 "Reviewer Number": how many reviewers should be assigned for the developer.
 
-"Preferable Reviewers": who should be the primary reviewers for the developer.
+"Preferable Reviewers" (only used in the allocation script): who should be the primary reviewers for the developer.
 - If the number of "Preferable Reviewers" is bigger than the "Reviewer Number", reviewers will be picked randomly from 
 "Preferable Reviewers".
 - If the number of "Preferable Reviewers" is less than the "Reviewer Number", reviewers will be the ones in 
 "Preferable Reviewers", plus the ones that be picked randomly from the rest of developers.
+
+"Indexes" (only used in the rotation script): is used to store indexes of the current allocation.
 
 ## Environment variables
 CREDENTIAL_FILE: the name of the json file contains credential in json format. The script needs this credential to be 
@@ -32,7 +38,11 @@ SHEET_NAME: the name of Google sheet that the script will work on.
 
 DEFAULT_REVIEWER_NUMBER: the default reviewer number.
 
-EXPERIENCED_DEV_NAMES: if provided, each developer will always have a reviewer from one of the experienced developers. 
+EXPERIENCED_DEV_NAMES (only used in the allocation script): if provided, each developer will always have a reviewer 
+from one of the experienced developers. 
+
+REVIEWERS_CONFIG_LIST (only used in the rotation script): is used to sort the developers list before making assignment.
+Recommendation: intertwine developers by their level of experience.
 
 
 # Usage guide
