@@ -69,24 +69,21 @@ def parse_team_developers(team_developers_str: str) -> set[str]:
     return set(name.strip() for name in team_developers_str.split(","))
 
 
-def assign_team_reviewers(
-    teams: List[Developer], num_reviewers: int
-) -> None:
+def assign_team_reviewers(teams: List[Developer]) -> None:
     """
     Assign reviewers to teams based on team composition with load balancing.
 
     Args:
-        teams: List of teams (stored as Developer objects)
-        num_reviewers: Number of reviewers to assign per team
+        teams: List of teams (stored as Developer objects), each with
+               reviewer_number attribute
 
-    Logic:
-    - If team has 0 members: assign num_reviewers random experienced devs
-    - If team has < num_reviewers members: use all members + fill with
-      experienced devs
-    - If team has >= num_reviewers members: select num_reviewers members
+    Logic for each team needing N reviewers:
+    - If team has 0 members: assign N random experienced devs
+    - If team has < N members: use all members + fill with experienced devs
+    - If team has >= N members: select N members
 
     Load Balancing:
-    - Tracks how many teams each developer is reviewing
+    - Tracks how many teams each developer is reviewing ACROSS ALL TEAMS
     - Prioritizes developers with fewer assignments for fairness
     """
     import random
@@ -97,7 +94,7 @@ def assign_team_reviewers(
     if not experienced_devs:
         raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
 
-    # Track assignments per developer for load balancing
+    # Track assignments per developer for load balancing ACROSS ALL TEAMS
     assignment_count: dict[str, int] = {}
 
     def select_balanced(candidates: list[str], count: int) -> list[str]:
@@ -114,13 +111,15 @@ def assign_team_reviewers(
 
         return candidates_copy[:count]
 
+    # Process ALL teams together to maintain load balancing state
     for team in teams:
         team.reviewer_indexes = set()
         team.reviewer_names = set()
 
-        # Get team's developers
+        # Get team's developers and required reviewer count
         team_members = list(team.preferable_reviewer_names)
         num_members = len(team_members)
+        num_reviewers = team.reviewer_number
 
         if num_members == 0:
             # No team members → assign balanced experienced devs
@@ -281,9 +280,8 @@ if __name__ == "__main__":
             tab_name="Teams",
         )
 
-        # Assign reviewers to each team based on their reviewer_number
-        for team in teams:
-            assign_team_reviewers([team], team.reviewer_number)
+        # Assign reviewers to ALL teams at once (maintains load balance)
+        assign_team_reviewers(teams)
 
         # Check if this is a manual run
         is_manual_run = os.environ.get("MANUAL_RUN", "false") == "true"
