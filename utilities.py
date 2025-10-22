@@ -223,7 +223,7 @@ def update_current_team_rotation(
     """
     Update reviewers in the current rotation column (for Teams manual runs)
     """
-    from env_constants import ALLOCATION_INDEXES_HEADER, TEAM_DEVELOPER_HEADER
+    from env_constants import ALLOCATION_INDEXES_HEADER, TEAM_HEADER
 
     allocation_column_index = len(expected_headers)
     reviewers_column_index = allocation_column_index + 1
@@ -265,9 +265,7 @@ def update_current_team_rotation(
         # Update Indexes column
         for idx, record in enumerate(records, start=2):
             developer = next(
-                dev
-                for dev in devs
-                if dev.name == record[TEAM_DEVELOPER_HEADER]
+                dev for dev in devs if dev.name == record[TEAM_HEADER]
             )
             reviewer_indexes = ", ".join(sorted(developer.reviewer_indexes))
             sheet.update_cell(idx, allocation_column_index, reviewer_indexes)
@@ -278,9 +276,7 @@ def update_current_team_rotation(
         # Update reviewer assignments
         for idx, record in enumerate(records, start=2):
             developer = next(
-                dev
-                for dev in devs
-                if dev.name == record[TEAM_DEVELOPER_HEADER]
+                dev for dev in devs if dev.name == record[TEAM_HEADER]
             )
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             sheet.update_cell(idx, reviewers_column_index, reviewer_names)

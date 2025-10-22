@@ -19,9 +19,10 @@ FE_DEVS_COLUMNS = [
 
 # Column names for Teams rotation
 TEAMS_COLUMNS = [
-    "Team Developers",  # Column 0: Team/Developer name
-    "Number of Reviewers",  # Column 1: Number of reviewers
-    "Indexes",  # Column 2: Rotation indexes
+    "Team",  # Column 0: Team name (identifier)
+    "Team Developers",  # Column 1: Default developers for the team
+    "Number of Reviewers",  # Column 2: Number of reviewers
+    "Indexes",  # Column 3: Rotation indexes
 ]
 
 # Convenient access to column names by index
@@ -29,8 +30,10 @@ DEVELOPER_HEADER = FE_DEVS_COLUMNS[0]
 REVIEWER_NUMBER_HEADER = FE_DEVS_COLUMNS[1]
 PREFERABLE_REVIEWER_HEADER = FE_DEVS_COLUMNS[2]
 
-TEAM_DEVELOPER_HEADER = TEAMS_COLUMNS[0]
-ALLOCATION_INDEXES_HEADER = TEAMS_COLUMNS[2]
+TEAM_HEADER = TEAMS_COLUMNS[0]
+TEAM_DEVELOPERS_HEADER = TEAMS_COLUMNS[1]
+TEAM_REVIEWER_NUMBER_HEADER = TEAMS_COLUMNS[2]
+ALLOCATION_INDEXES_HEADER = TEAMS_COLUMNS[3]
 
 # Expected headers for each sheet type
 EXPECTED_HEADERS_FOR_ALLOCATION = FE_DEVS_COLUMNS
