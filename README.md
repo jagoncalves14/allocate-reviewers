@@ -66,17 +66,19 @@ Two automated workflows run via GitHub Actions:
 - Runs **every 15 days** on Wednesdays at 9:00 AM UTC
 - Checks if at least 15 days have passed since the last rotation
 - Allocates reviewers randomly with experienced dev guarantee
+- **Load Balanced**: Prioritizes reviewers with fewer assignments to ensure fair distribution
 
 ### 2. Teams Rotation
 - Runs **every 15 days** on Wednesdays at 9:00 AM UTC (same schedule as FE Devs)
 - Checks if at least 15 days have passed since the last rotation
 - Assigns reviewers to teams based on team composition
 - Each team can specify its own "Number of Reviewers" in the sheet (uses `DEFAULT_REVIEWER_NUMBER` if empty)
+- **Load Balanced**: Tracks how many teams each developer is reviewing and prioritizes those with fewer assignments
 
 **Assignment Logic** (for each team with N reviewers needed):
-- **0 team members**: Assigns N random experienced developers
-- **Fewer members than N**: Uses all team members + fills remaining slots with experienced devs (not from the team)
-- **Enough members**: Randomly selects N members from the team
+- **0 team members**: Assigns N experienced developers (load-balanced to those with fewest team assignments)
+- **Fewer members than N**: Uses all team members + fills remaining slots with experienced devs (not from the team, load-balanced)
+- **Enough members**: Selects N members from the team (load-balanced to those with fewest team assignments)
 
 **Example** (Team needs 2 reviewers):
 - Team with 0 members → 2 random experienced devs (e.g., Joao, Pavel)

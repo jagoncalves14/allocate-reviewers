@@ -4,7 +4,8 @@ FE Devs Allocation - Individual Developer Reviewer Assignment
 This script allocates reviewers to individual developers for the FE Devs team.
 
 BUSINESS LOGIC:
-1. Each developer can specify their own "Number of Reviewers" in the Google Sheet
+1. Each developer can specify their own "Number of Reviewers" in the
+   Google Sheet
    - Uses DEFAULT_REVIEWER_NUMBER as fallback if column is empty
    - Allows per-developer customization (e.g., Joao needs 2, Pavel needs 3)
 
@@ -15,10 +16,13 @@ BUSINESS LOGIC:
       experienced developer as a reviewer (mandatory requirement)
    c) ALL DEVELOPERS: Fills remaining slots from all available devs
 
-3. Smart Selection:
-   - Never assigns a developer to review themselves
-   - Balances workload: prioritizes developers with fewer review assignments
-   - Randomizes selection among equally available reviewers
+    3. Load Balancing & Smart Selection:
+       - Never assigns a developer to review themselves
+       - Tracks how many developers each reviewer is assigned to
+       - Prioritizes reviewers with fewer assignments for fairness
+       - Prevents scenarios where one reviewer gets 5 assignments while
+         others get 0
+       - Randomizes selection among equally loaded reviewers
 
 4. Customization via Google Sheet:
    - "Number of Reviewers" column: How many reviewers this developer needs
@@ -174,12 +178,12 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
             )
             new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
-        
+
         # Style columns (optional - skip if rate limited)
         try:
             num_rows = len(records) + 1
             last_col = sheet.col_count
-            
+
             # Apply light blue background ONLY to header of new column
             new_col_letter = column_number_to_letter(column_index)
             sheet.format(f"{new_col_letter}1", {
@@ -189,25 +193,45 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
                     "bold": True
                 }
             })
-            
+
             # Style older columns (if quota allows)
             if last_col > column_index:
-                for col in range(column_index + 1, min(last_col + 1, column_index + 6)):
+                for col in range(
+                    column_index + 1, min(last_col + 1, column_index + 6)
+                ):
                     col_letter = column_number_to_letter(col)
-                    sheet.format(f"{col_letter}1", {
-                        "backgroundColor": {"red": 1, "green": 1, "blue": 1},
-                        "textFormat": {
-                            "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                            "bold": False
-                        }
-                    })
-                    if num_rows > 1:
-                        sheet.format(f"{col_letter}2:{col_letter}{num_rows}", {
+                    sheet.format(
+                        f"{col_letter}1",
+                        {
+                            "backgroundColor": {
+                                "red": 1,
+                                "green": 1,
+                                "blue": 1,
+                            },
                             "textFormat": {
-                                "foregroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
-                                "bold": False
-                            }
-                        })
+                                "foregroundColor": {
+                                    "red": 0.6,
+                                    "green": 0.6,
+                                    "blue": 0.6,
+                                },
+                                "bold": False,
+                            },
+                        },
+                    )
+                    if num_rows > 1:
+                        sheet.format(
+                            f"{col_letter}2:{col_letter}{num_rows}",
+                            {
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0.6,
+                                        "green": 0.6,
+                                        "blue": 0.6,
+                                    },
+                                    "bold": False,
+                                },
+                            },
+                        )
         except Exception as e:
             print(f"Note: Styling skipped (quota or other issue): {e}")
 

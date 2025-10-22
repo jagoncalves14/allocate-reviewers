@@ -15,20 +15,30 @@ TEAMS ROTATION (this file - rotate_reviewers.py):
 
 Assignment Logic (for team needing N reviewers):
 1. If team has 0 members:
-   → Assign N random experienced developers
+   → Assign N experienced developers (load-balanced)
 
 2. If team has fewer members than N:
    → Use all team members as reviewers
-   → Fill remaining slots with experienced devs (not from the team)
+   → Fill remaining slots with experienced devs (not from team,
+     load-balanced)
 
 3. If team has >= N members:
-   → Randomly select N members from the team
+   → Select N members from the team (load-balanced)
+
+Load Balancing:
+- Tracks how many teams each developer is reviewing
+- Prioritizes developers with fewer assignments for fairness
+- Prevents scenarios where one dev reviews 5 teams while others review 0
 
 Examples:
-- Team needs 2 reviewers, has 0 members → 2 random experienced devs
-- Team needs 2 reviewers, has 1 member (Robert) → Robert + 1 experienced dev
+- Team needs 2 reviewers, has 0 members → 2 experienced devs
+  (least assigned)
+- Team needs 2 reviewers, has 1 member (Robert) → Robert +
+  1 experienced dev (least assigned)
 - Team needs 2 reviewers, has 3+ members → 2 random members from team
-- Team needs 3 reviewers, has 5 members → 3 random members from team
+  (least assigned)
+- Team needs 3 reviewers, has 5 members → 3 members from team
+  (least assigned)
 
 Runs every 15 days on Wednesdays or manually via GitHub Actions.
 """
@@ -62,7 +72,7 @@ def assign_team_reviewers(
     teams: List[Developer], num_reviewers: int
 ) -> None:
     """
-    Assign reviewers to teams based on team composition.
+    Assign reviewers to teams based on team composition with load balancing.
 
     Args:
         teams: List of teams (stored as Developer objects)
@@ -72,8 +82,11 @@ def assign_team_reviewers(
     - If team has 0 members: assign num_reviewers random experienced devs
     - If team has < num_reviewers members: use all members + fill with
       experienced devs
-    - If team has >= num_reviewers members: randomly select num_reviewers
-      members
+    - If team has >= num_reviewers members: select num_reviewers members
+
+    Load Balancing:
+    - Tracks how many teams each developer is reviewing
+    - Prioritizes developers with fewer assignments for fairness
     """
     import random
     from env_constants import EXPERIENCED_DEV_NAMES
@@ -82,6 +95,23 @@ def assign_team_reviewers(
     experienced_devs = list(EXPERIENCED_DEV_NAMES)
     if not experienced_devs:
         raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
+
+    # Track assignments per developer for load balancing
+    assignment_count: dict[str, int] = {}
+
+    def select_balanced(candidates: list[str], count: int) -> list[str]:
+        """Select 'count' reviewers from candidates, balancing workload"""
+        if count >= len(candidates):
+            return candidates
+
+        # Sort by assignment count (ascending), then randomize ties
+        candidates_copy = candidates.copy()
+        random.shuffle(candidates_copy)  # Randomize first
+        candidates_copy.sort(
+            key=lambda name: assignment_count.get(name, 0)
+        )  # Then sort by load
+
+        return candidates_copy[:count]
 
     for team in teams:
         team.reviewer_indexes = set()
@@ -92,33 +122,49 @@ def assign_team_reviewers(
         num_members = len(team_members)
 
         if num_members == 0:
-            # No team members → assign num_reviewers random experienced devs
-            selected = random.sample(
-                experienced_devs, min(num_reviewers, len(experienced_devs))
-            )
+            # No team members → assign balanced experienced devs
+            selected = select_balanced(experienced_devs, num_reviewers)
             team.reviewer_names.update(selected)
+            # Track assignments
+            for dev_name in selected:
+                assignment_count[dev_name] = (
+                    assignment_count.get(dev_name, 0) + 1
+                )
 
         elif num_members < num_reviewers:
             # Fewer members than needed → use all + fill with experienced devs
             team.reviewer_names.update(team_members)
+            # Track team member assignments
+            for dev_name in team_members:
+                assignment_count[dev_name] = (
+                    assignment_count.get(dev_name, 0) + 1
+                )
 
             # Get experienced devs not in this team
             eligible = [
                 dev for dev in experienced_devs if dev not in team_members
             ]
 
-            # Fill remaining slots
+            # Fill remaining slots with balanced selection
             remaining_slots = num_reviewers - num_members
             if eligible and remaining_slots > 0:
-                selected = random.sample(
-                    eligible, min(remaining_slots, len(eligible))
-                )
+                selected = select_balanced(eligible, remaining_slots)
                 team.reviewer_names.update(selected)
+                # Track assignments
+                for dev_name in selected:
+                    assignment_count[dev_name] = (
+                        assignment_count.get(dev_name, 0) + 1
+                    )
 
         else:
-            # Enough members → randomly select num_reviewers from team
-            selected = random.sample(team_members, num_reviewers)
+            # Enough members → select balanced from team
+            selected = select_balanced(team_members, num_reviewers)
             team.reviewer_names.update(selected)
+            # Track assignments
+            for dev_name in selected:
+                assignment_count[dev_name] = (
+                    assignment_count.get(dev_name, 0) + 1
+                )
 
 
 def write_reviewers_to_sheet(teams: List[Developer]) -> None:
@@ -233,7 +279,7 @@ if __name__ == "__main__":
             ),
             tab_name="Teams",
         )
-        
+
         # Assign reviewers to each team based on their reviewer_number
         for team in teams:
             assign_team_reviewers([team], team.reviewer_number)

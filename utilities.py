@@ -170,9 +170,9 @@ def update_current_sprint_reviewers(
                             },
                             "textFormat": {
                                 "foregroundColor": {
-                                    "red": 0.6,
-                                    "green": 0.6,
-                                    "blue": 0.6,
+                                    "red": 0.3,
+                                    "green": 0.3,
+                                    "blue": 0.3,
                                 },
                                 "bold": False,
                             },
@@ -184,9 +184,9 @@ def update_current_sprint_reviewers(
                             {
                                 "textFormat": {
                                     "foregroundColor": {
-                                        "red": 0.6,
-                                        "green": 0.6,
-                                        "blue": 0.6,
+                                        "red": 0.3,
+                                        "green": 0.3,
+                                        "blue": 0.3,
                                     },
                                     "bold": False,
                                 }
@@ -308,9 +308,9 @@ def update_current_team_rotation(
                             },
                             "textFormat": {
                                 "foregroundColor": {
-                                    "red": 0.6,
-                                    "green": 0.6,
-                                    "blue": 0.6,
+                                    "red": 0.3,
+                                    "green": 0.3,
+                                    "blue": 0.3,
                                 },
                                 "bold": False,
                             },
@@ -322,9 +322,9 @@ def update_current_team_rotation(
                             {
                                 "textFormat": {
                                     "foregroundColor": {
-                                        "red": 0.6,
-                                        "green": 0.6,
-                                        "blue": 0.6,
+                                        "red": 0.3,
+                                        "green": 0.3,
+                                        "blue": 0.3,
                                     },
                                     "bold": False,
                                 }
