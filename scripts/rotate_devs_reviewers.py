@@ -1,7 +1,8 @@
 """
 Individual Developer Reviewer Rotation
 
-This script assigns reviewers to individual developers (rotate_devs_reviewers.py).
+This script assigns reviewers to individual developers
+(rotate_devs_reviewers.py).
 
 BUSINESS LOGIC:
 1. Each developer can specify their own "Number of Reviewers" in the
@@ -9,36 +10,63 @@ BUSINESS LOGIC:
    - Uses DEFAULT_REVIEWER_NUMBER as fallback if column is empty
    - Allows per-developer customization (e.g., Joao needs 2, Pavel needs 3)
 
-2. Reviewer Selection Priority (in order):
+2. Experience-Based Assignment Rules:
+   a) NON-EXPERIENCED DEVELOPERS:
+      - Can ONLY be assigned experienced developers as reviewers
+      - Cannot have non-experienced developers reviewing their code
+
+   b) EXPERIENCED DEVELOPERS:
+      - Must have at least 1 experienced developer as reviewer (mandatory)
+      - Can have at most 1 non-experienced developer as additional reviewer
+      - Example: Valid assignments: [Exp1, Exp2], [Exp1, NonExp1]
+      - Example: Invalid assignment: [NonExp1, NonExp2]
+
+3. Reviewer Selection Priority (in order):
    a) PREFERABLE REVIEWERS: Tries to assign reviewers from the
       developer's "Preferable Reviewers" list first
+      - For non-experienced devs: only experienced devs from preferable list
    b) EXPERIENCED DEVELOPERS: Ensures EVERY developer gets at least 1
       experienced developer as a reviewer (mandatory requirement)
-   c) ALL DEVELOPERS: Fills remaining slots from all available devs
+   c) EXPERIENCED DEVELOPERS: Fills remaining slots with experienced devs
+   d) NON-EXPERIENCED DEVELOPERS: For experienced devs only, can add up to
+      1 non-experienced dev if slots remain
 
-    3. Load Balancing & Smart Selection:
-       - Never assigns a developer to review themselves
-       - Tracks how many developers each reviewer is assigned to
-       - Prioritizes reviewers with fewer assignments for fairness
-       - Prevents scenarios where one reviewer gets 5 assignments while
-         others get 0
-       - Randomizes selection among equally loaded reviewers
+4. Load Balancing & Smart Selection:
+   - Never assigns a developer to review themselves
+   - Tracks how many developers each reviewer is assigned to
+   - Prioritizes reviewers with fewer assignments for fairness
+   - Prevents scenarios where one reviewer gets 5 assignments while
+     others get 0
+   - Randomizes selection among equally loaded reviewers
 
-4. Customization via Google Sheet:
+5. Customization via Google Sheet:
    - "Number of Reviewers" column: How many reviewers this developer needs
    - "Preferable Reviewers" column: Comma-separated list of preferred names
+   - Config sheet: Lists experienced developers
 
-EXAMPLE:
-Developer: Joao
+EXAMPLE 1 (Non-Experienced Developer):
+Developer: Shanna (non-experienced)
 Number of Reviewers: 2
-Preferable Reviewers: Pavel, Claudiu
+Preferable Reviewers: Pavel, Dawid
 Experienced Devs: Pavel, Claudiu, Chris, Robert
 
 Allocation Process:
-1. Try preferable: Pavel (✓ available) → assigned
-2. Check experienced: Pavel already assigned → requirement met ✓
-3. Fill remaining slots: Selects from all devs (e.g., Shanna)
-Result: Joao → reviewed by Pavel, Shanna
+1. Try preferable: Pavel (✓ experienced) → assigned
+   (Dawid skipped - not experienced)
+2. Fill remaining: Claudiu (✓ experienced) → assigned
+Result: Shanna → reviewed by Pavel, Claudiu
+
+EXAMPLE 2 (Experienced Developer):
+Developer: Pavel (experienced)
+Number of Reviewers: 2
+Preferable Reviewers: Claudiu, Shanna
+Experienced Devs: Pavel, Claudiu, Chris, Robert
+
+Allocation Process:
+1. Try preferable: Claudiu (✓ available) → assigned
+2. Check experienced: Claudiu already assigned → requirement met ✓
+3. Fill remaining: Can add 1 non-experienced (e.g., Shanna) → assigned
+Result: Pavel → reviewed by Claudiu, Shanna
 
 SCHEDULE:
 - Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
@@ -116,6 +144,10 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     for dev in devs:
         chosen_reviewer_names: Set[str] = set()
         reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
+        is_experienced_dev = dev.name in valid_experienced_dev_names
+
+        # Non-experienced devs that can be selected as reviewers
+        non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
 
         def selectable_number_getter() -> int:
             return max(reviewer_number - len(chosen_reviewer_names), 0)
@@ -131,18 +163,58 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             # EVERYONE must have at least 1 experienced reviewer
             return 1
 
+        def non_experienced_pool_getter() -> int:
+            """
+            Get number of slots to fill from non-experienced pool.
+            - Non-experienced devs: NEVER (return 0)
+            - Experienced devs: at most 1 non-experienced reviewer
+            """
+            if not is_experienced_dev:
+                # Non-experienced devs can ONLY have experienced reviewers
+                return 0
+
+            # Count how many non-experienced reviewers already assigned
+            non_experienced_count = sum(
+                1 for name in chosen_reviewer_names
+                if name in non_experienced_dev_names
+            )
+
+            # Check if we have remaining slots
+            remaining_slots = reviewer_number - len(chosen_reviewer_names)
+
+            # Can add at most 1 non-experienced, and only if we have space
+            if non_experienced_count == 0 and remaining_slots > 0:
+                return min(1, remaining_slots)
+            return 0
+
+        # Build the selection pipeline
+        # For non-experienced devs: preferable must also be experienced
+        preferable_pool = (
+            dev.preferable_reviewer_names & valid_experienced_dev_names
+            if not is_experienced_dev
+            else dev.preferable_reviewer_names
+        )
+
         configures = [
+            # Phase 1: Try preferable reviewers first
             SelectableConfigure(
-                names=dev.preferable_reviewer_names,
+                names=preferable_pool,
                 number_getter=selectable_number_getter,
             ),
+            # Phase 2: Ensure at least 1 experienced reviewer (mandatory)
             SelectableConfigure(
                 names=valid_experienced_dev_names,
                 number_getter=experienced_reviewer_number_getter,
             ),
+            # Phase 3: Fill remaining slots with experienced devs
             SelectableConfigure(
-                names=all_dev_names,
+                names=valid_experienced_dev_names,
                 number_getter=selectable_number_getter,
+            ),
+            # Phase 4: For exp. devs only, can add up to 1 non-exp.
+            SelectableConfigure(
+                names=non_experienced_dev_names,
+                number_getter=non_experienced_pool_getter,
             ),
         ]
 
@@ -252,11 +324,13 @@ if __name__ == "__main__":
         # Load configuration from Config sheet
         from lib.config_loader import load_config_from_sheet
         from lib import env_constants
-        
-        default_reviewer_number, experienced_dev_names = load_config_from_sheet()
+
+        default_reviewer_number, exp_dev_names = (
+            load_config_from_sheet()
+        )
         env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
-        env_constants.EXPERIENCED_DEV_NAMES = experienced_dev_names
-        
+        env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
+
         developers = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ALLOCATION
         )
