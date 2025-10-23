@@ -37,14 +37,14 @@ def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) ->
     mocked_spreadsheet = Mock(spec=Spreadsheet)
     mocked_client.open.return_value = mocked_spreadsheet
 
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet("FE Devs") as sheet:
         mocked_service_account.from_json_keyfile_name.assert_called_once_with(
             "credential_file.json", DRIVE_SCOPE
         )
         mocked_gspread.authorize.assert_called_once_with(mocked_credential)
 
         mocked_client.open.assert_called_once_with("S")
-        assert sheet == mocked_spreadsheet.sheet1
+        mocked_spreadsheet.worksheet.assert_called_once_with("FE Devs")
 
         mocked_client.session.close.assert_not_called()
 

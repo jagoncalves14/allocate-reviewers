@@ -1,68 +1,100 @@
 # Functionality
-Simple scripts to assign developers to review each other's code. The scripts will read the configuration from a Google 
-sheet, assign reviewers for developers in the list, and write back the result to the Google sheet. Developers can check 
-the name of their reviewers by accessing the link to the Google sheet.
+Automated reviewer assignment system that runs via GitHub Actions. The system manages two types of rotations:
+- **FE Devs Allocation**: Individual developer reviewer assignments with load balancing
+- **Teams Rotation**: Team-based reviewer assignments with smart member selection
 
-A developer from the team should set up a cron job to execute one of the scripts periodically.
+All configuration is managed through Google Sheets, and assignments are automatically updated every 15 days or can be triggered manually.
 
-## Reviewers allocation script
-The assignment is done randomly. Nonetheless, it is possible to control the preferable reviewers for each specific 
-developer.
+## FE Devs Allocation (Individual Developers)
+Assigns reviewers to individual developers with intelligent load balancing:
+- **Random selection** with preference support for specific reviewers
+- **Load balanced**: Prevents scenarios where one reviewer gets 5 assignments while others get 0
+- **Experienced dev guarantee**: Every developer gets at least one experienced developer as a reviewer
+- **Customizable**: Each developer can specify their own number of reviewers and preferred reviewers
 
-## Reviewers rotation script
-The assignment is rotated orderly so that all developers have a chance to read each other's code.
+## Teams Rotation
+Assigns reviewers to teams based on team composition:
+- **Smart selection**: Uses team members when available, fills with experienced devs when needed
+- **Load balanced**: Distributes team review assignments fairly across all developers
+- **Flexible**: Each team can specify its own number of reviewers
+- **Automated**: Runs on the same schedule as FE Devs allocation
 
 
 # Configurable parameters
 
-## Google sheet
-"Developer": unique name of developers in the team.
+## Google Sheet Columns
 
-"Reviewer Number": how many reviewers should be assigned for the developer.
+### FE Devs Tab:
+- **"Developer"**: Unique name of developers in the team
+- **"Number of Reviewers"**: How many reviewers should be assigned for this developer
+- **"Preferable Reviewers"**: Comma-separated list of preferred reviewer names (optional)
+  - If specified, the system will try to assign these reviewers first
+  - If more reviewers are needed, they will be picked randomly from other developers
+  - Load balancing ensures fair distribution even with preferences
 
-"Preferable Reviewers" (only used in the allocation script): who should be the primary reviewers for the developer.
-- If the number of "Preferable Reviewers" is bigger than the "Reviewer Number", reviewers will be picked randomly from 
-"Preferable Reviewers".
-- If the number of "Preferable Reviewers" is less than the "Reviewer Number", reviewers will be the ones in 
-"Preferable Reviewers", plus the ones that be picked randomly from the rest of developers.
+### Teams Tab:
+- **"Team"**: Unique team name
+- **"Team Developers"**: Comma-separated list of developers in this team
+- **"Number of Reviewers"**: How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
 
-"Indexes" (only used in the rotation script): is used to store indexes of the current allocation.
+## Environment Variables / GitHub Secrets
 
-## Environment variables
-CREDENTIAL_FILE: the name of the json file contains credential in json format. The script needs this credential to be 
-able to read and write to the Google sheet. The file should be placed in the same directory as "allocate_reviewer.py" 
-lives. If you do not know what "credential in json format is", you might need to read this article 
-https://www.makeuseof.com/tag/read-write-google-sheets-python/ to set thing up in Google side.
+**CREDENTIAL_FILE** (Local development only): Path to the Google Service Account credentials JSON file.
 
-SHEET_NAME: the name of Google sheet that the script will work on.
+**GOOGLE_CREDENTIALS_JSON** (GitHub Actions): Full JSON content of your Google Service Account credentials file.
 
-DEFAULT_REVIEWER_NUMBER: the default reviewer number.
+**SHEET_NAME**: The name of the Google Sheet that contains both "FE Devs" and "Teams" tabs.
 
-EXPERIENCED_DEV_NAMES (only used in the allocation script): if provided, each developer will always have a reviewer 
-from one of the experienced developers. 
+**DEFAULT_REVIEWER_NUMBER**: Default number of reviewers (used as fallback when "Number of Reviewers" column is empty).
 
-REVIEWERS_CONFIG_LIST (only used in the rotation script): is used to sort the developers list before making assignment.
-Recommendation: intertwine developers by their level of experience.
+**EXPERIENCED_DEV_NAMES**: Comma-separated list of experienced developer names (e.g., `"Joao, Pavel, Chris, Robert"`).
+- Used by **both** FE Devs and Teams rotations
+- FE Devs: Ensures every developer gets at least one experienced reviewer
+- Teams: Used to fill reviewer slots for teams with insufficient members
 
 
 # Usage guide
 
 ## Local Development
-1. Enable "Google Sheets API" and get the credential.
-2. Create a file "some_name.json" in the same directory as "allocate_reviewer.py" lives, and copy the credential data 
-to the that file.
-3. Create a sheet for the script to work on.
-4. Copy the template in R.xlsx to the created sheet, and fill in info.
-5. Copy the template in .env_template to .env, and fill in info.
-6. Use poetry to spawn a virtual env 
-7. Install necessary packages by "poetry install"  
-8. Start allocating reviewers by "python allocate_reviewers.py"  
+
+1. **Enable Google APIs** in Google Cloud Console:
+   - Enable "Google Sheets API"
+   - Enable "Google Drive API" (required by gspread library)
+   - Create a Service Account and download the credentials JSON
+
+2. **Setup credentials**:
+   - Create a file "credentials.json" in the project root
+   - Copy the Service Account credentials into this file
+
+3. **Setup Google Sheet**:
+   - Create a new Google Sheet
+   - Create two tabs: "FE Devs" and "Teams"
+   - Copy the template structure from `example.xlsx`
+   - Share the sheet with your Service Account email
+
+4. **Setup environment**:
+   - Copy `.env_template` to `.env`
+   - Fill in the required values (CREDENTIAL_FILE, SHEET_NAME, etc.)
+
+5. **Install dependencies**:
+   ```bash
+   poetry install
+   ```
+
+6. **Run scripts**:
+   ```bash
+   # For FE Devs allocation
+   poetry run python allocate_reviewers.py
+   
+   # For Teams rotation
+   poetry run python rotate_reviewers.py
+   ```  
 
 ## Automated Execution with GitHub Actions
 
 ### Automated Workflow (Scheduled) 🤖
 
-**Workflow: "Run All Review Rotations"** (`.github/workflows/run-all-rotations.yml`)
+**Workflow: "Run All Review Rotations"** (`.github/workflows/all-review-rotations.yml`)
 
 This is the **only workflow with a cron schedule**. It runs both rotations sequentially:
 
@@ -88,13 +120,14 @@ This is the **only workflow with a cron schedule**. It runs both rotations seque
 ### Manual Workflows (On-Demand Only) 🔧
 
 Two additional workflows are available for **manual execution only** (no cron):
-- **"Run FE Devs Review Rotation"** - Run FE Devs allocation only
-- **"Run Teams Review Rotation"** - Run Teams rotation only
+- **"Run FE Devs Review Rotation"** (`.github/workflows/fe-devs-review-rotation.yml`) - Run FE Devs allocation only
+- **"Run Teams Review Rotation"** (`.github/workflows/teams-review-rotation.yml`) - Run Teams rotation only
 
 **Use cases:**
 - Need to update only FE Devs without touching Teams
 - Need to update only Teams without touching FE Devs
 - Want granular control over individual rotations
+- Emergency rotation needed outside the 15-day schedule
 
 ### Assignment Logic
 
@@ -168,21 +201,44 @@ Your Google Sheet should have **two tabs**:
 
 ### How It Works
 
-- **Scheduled Execution**: Every Wednesday at 9 AM UTC, both workflows check if 15 days have passed since their last rotation
+- **Scheduled Execution**: Every Wednesday at 5:00 AM Finland Time (3:00 AM UTC), the unified workflow checks both rotations
 - **Date Checking**: Each script reads the most recent sprint/rotation date from its respective Google Sheet tab
-- **Independent Schedules**: FE Devs and Teams rotate independently (can be on different dates)
+- **Independent Schedules**: FE Devs and Teams rotate independently (can be on different 15-day cycles)
 - **Smart Execution**: Only runs if 15+ days have passed (or if manually triggered)
-- **Manual Override**: Manual triggers always execute, independent of the schedule
+- **Manual Override**: Manual triggers always execute immediately, independent of the schedule
+- **Load Balancing**: Both systems track assignments and prioritize reviewers/developers with fewer assignments
 
-### Column Header Format
+### Load Balancing Details
+
+**FE Devs:**
+- Tracks how many developers each reviewer is assigned to
+- Prioritizes reviewers with fewer current assignments
+- Prevents uneven distribution (e.g., one reviewer with 5 assignments, another with 0)
+- Randomizes selection among equally loaded reviewers
+
+**Teams:**
+- Tracks how many teams each developer is reviewing
+- Distributes team assignments fairly across all available developers
+- Works across all three assignment scenarios (no members, few members, enough members)
+- Ensures workload equity in team-based reviews
+
+### Column Header Format & Styling
 
 The system maintains the sprint schedule even when manual runs occur:
 
-- **Scheduled runs**: Create a new column with header format `DD-MM-YYYY`
-  - Example: `22-10-2025`
+**Scheduled runs:** Create a new column with header format `DD-MM-YYYY`
+- Example: `22-10-2025`
+- Header: Light blue background with black text
+- Manual run column width: 280px (wider for the extra date info)
 
-- **Manual runs**: Update the existing column and modify the header to show when manual intervention happened
-  - First manual run: `22-10-2025 / Manual Run on: 23-10-2025`
-  - Subsequent manual runs: `22-10-2025 / Manual Run on: 24-10-2025`
-  
+**Manual runs:** Update the existing column and modify the header to show when manual intervention happened
+- First manual run: `22-10-2025 / Manual Run on: 23-10-2025`
+- Subsequent manual runs: `22-10-2025 / Manual Run on: 24-10-2025`
+- The original sprint date is always preserved
+
+**Column Styling:**
+- **Current sprint column** (most recent): Light blue header background, black text
+- **5 previous sprint columns**: White background, light grey text (0.8 opacity)
+- Older columns remain unchanged
+
 The sprint date is always preserved, ensuring scheduled rotations remain on the 15-day cycle regardless of manual interventions.

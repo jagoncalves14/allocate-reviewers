@@ -41,6 +41,7 @@ EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 DEFAULT_REVIEWER_NUMBER = int(
     os.environ.get("DEFAULT_REVIEWER_NUMBER") or "1"
 )
-EXPERIENCED_DEV_NAMES = set(
-    os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", ")
+_experienced_devs_str = os.environ.get("EXPERIENCED_DEV_NAMES", "")
+EXPERIENCED_DEV_NAMES = (
+    set(_experienced_devs_str.split(", ")) if _experienced_devs_str else set()
 )

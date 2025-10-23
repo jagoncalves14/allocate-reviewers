@@ -10,27 +10,27 @@ from data_types import Developer
 SHEET = [
     {
         "Developer": "A",
-        "Reviewer Number": "",
+        "Number of Reviewers": "",
         "Preferable Reviewers": "B, C",
     },
     {
         "Developer": "B",
-        "Reviewer Number": "2",
+        "Number of Reviewers": "2",
         "Preferable Reviewers": "",
     },
     {
         "Developer": "C",
-        "Reviewer Number": "3",
+        "Number of Reviewers": "3",
         "Preferable Reviewers": "",
     },
     {
         "Developer": "D",
-        "Reviewer Number": "3",
+        "Number of Reviewers": "3",
         "Preferable Reviewers": "",
     },
     {
         "Developer": "E",
-        "Reviewer Number": "5",
+        "Number of Reviewers": "5",
         "Preferable Reviewers": "",
     },
 ]
