@@ -31,7 +31,7 @@ Load Balancing:
 Examples:
 - Team needs 2 reviewers, has 0 members → 2 experienced devs
   (least assigned)
-- Team needs 2 reviewers, has 1 member (Robert) → Robert +
+- Team needs 2 reviewers, has 1 member → the team member +
   1 experienced dev (least assigned)
 - Team needs 2 reviewers, has 3+ members → 2 random members from team
   (least assigned)

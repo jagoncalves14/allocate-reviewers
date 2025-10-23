@@ -6,7 +6,7 @@ import pytest
 from scripts.rotate_team_reviewers import assign_team_reviewers, parse_team_developers
 from lib.data_types import Developer
 
-EXPERIENCED_DEVS = {"Pavel", "Joao", "Chris", "Robert", "Claudiu"}
+EXPERIENCED_DEVS = {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
 
 
 class TestParseTeamDevelopers:
@@ -17,16 +17,16 @@ class TestParseTeamDevelopers:
         assert result == set()
 
     def test_single_developer(self):
-        result = parse_team_developers("Pavel")
-        assert result == {"Pavel"}
+        result = parse_team_developers("Dev2")
+        assert result == {"Dev2"}
 
     def test_multiple_developers(self):
-        result = parse_team_developers("Pavel, Joao, Chris")
-        assert result == {"Pavel", "Joao", "Chris"}
+        result = parse_team_developers("Dev2, Dev3, Dev4")
+        assert result == {"Dev2", "Dev3", "Dev4"}
 
     def test_with_extra_spaces(self):
-        result = parse_team_developers("  Pavel  ,  Joao  ,  Chris  ")
-        assert result == {"Pavel", "Joao", "Chris"}
+        result = parse_team_developers("  Dev2  ,  Dev3  ,  Dev4  ")
+        assert result == {"Dev2", "Dev3", "Dev4"}
 
 
 class TestAssignTeamReviewers:
@@ -37,7 +37,7 @@ class TestAssignTeamReviewers:
         """Team with 0 members should get N random experienced devs"""
         teams = [
             Developer(
-                name="Stock",
+                name="Team8",
                 reviewer_number=2,
                 preferable_reviewer_names=set(),
             )
@@ -48,7 +48,7 @@ class TestAssignTeamReviewers:
         assert len(teams[0].reviewer_names) == 2
         # All reviewers should be experienced devs
         assert all(
-            name in {"Pavel", "Joao", "Chris", "Robert", "Claudiu"}
+            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
             for name in teams[0].reviewer_names
         )
 
@@ -57,9 +57,9 @@ class TestAssignTeamReviewers:
         """Team with 1 member needing 2 reviewers"""
         teams = [
             Developer(
-                name="Finance Core",
+                name="Team2",
                 reviewer_number=2,
-                preferable_reviewer_names={"Damian"},
+                preferable_reviewer_names={"Dev7"},
             )
         ]
 
@@ -67,13 +67,13 @@ class TestAssignTeamReviewers:
 
         # Should have 2 reviewers
         assert len(teams[0].reviewer_names) == 2
-        # Damian should be included (team member)
-        assert "Damian" in teams[0].reviewer_names
+        # Dev7 should be included (team member)
+        assert "Dev7" in teams[0].reviewer_names
         # Other reviewer should be experienced dev not in team
-        other_reviewers = teams[0].reviewer_names - {"Damian"}
+        other_reviewers = teams[0].reviewer_names - {"Dev7"}
         assert len(other_reviewers) == 1
         assert all(
-            name in {"Pavel", "Joao", "Chris", "Robert", "Claudiu"}
+            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
             for name in other_reviewers
         )
 
@@ -82,9 +82,9 @@ class TestAssignTeamReviewers:
         """Team with 3 members needing 2 reviewers"""
         teams = [
             Developer(
-                name="Clinical Foundation",
+                name="Team1",
                 reviewer_number=2,
-                preferable_reviewer_names={"Robert", "Pavel", "Ximo"},
+                preferable_reviewer_names={"Dev5", "Dev2", "Dev10"},
             )
         ]
 
@@ -94,7 +94,7 @@ class TestAssignTeamReviewers:
         assert len(teams[0].reviewer_names) == 2
         # All reviewers should be from team members
         assert all(
-            name in {"Robert", "Pavel", "Ximo"}
+            name in {"Dev5", "Dev2", "Dev10"}
             for name in teams[0].reviewer_names
         )
 
@@ -103,17 +103,17 @@ class TestAssignTeamReviewers:
         """Load balancing should distribute assignments fairly"""
         teams = [
             Developer(
-                name="Stock",
+                name="Team3",
                 reviewer_number=2,
                 preferable_reviewer_names=set(),
             ),
             Developer(
-                name="Data",
+                name="Team4",
                 reviewer_number=2,
                 preferable_reviewer_names=set(),
             ),
             Developer(
-                name="Enterprise 1",
+                name="Team5",
                 reviewer_number=2,
                 preferable_reviewer_names=set(),
             ),
@@ -137,12 +137,12 @@ class TestAssignTeamReviewers:
         """Each team can have different reviewer requirements"""
         teams = [
             Developer(
-                name="Team A",
+                name="Team6",
                 reviewer_number=1,
                 preferable_reviewer_names=set(),
             ),
             Developer(
-                name="Team B",
+                name="Team7",
                 reviewer_number=3,
                 preferable_reviewer_names=set(),
             ),

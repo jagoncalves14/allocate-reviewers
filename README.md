@@ -173,7 +173,7 @@ Two additional workflows are available for **manual execution only** (no cron):
    | `GOOGLE_CREDENTIALS_JSON` | Full JSON content of your Google Service Account credentials file | `{"type": "service_account", ...}` |
    | `SHEET_NAME` | Name of your Google Sheet | `"PVC Front End - Code Reviewers [Demo]"` |
    | `DEFAULT_REVIEWER_NUMBER` | Number of reviewers per developer/team | `"2"` |
-   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Joao, Pavel, Claudiu, Chris"` |
+   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Dev2, Dev3, Dev4, Dev5"` |
 
 3. **For `GOOGLE_CREDENTIALS_JSON`:**
    - Open your Google Service Account credentials JSON file

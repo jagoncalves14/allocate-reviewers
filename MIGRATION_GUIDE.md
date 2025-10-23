@@ -111,16 +111,16 @@ B: Default Number of Reviewers (value in B2)
 ```
      A                        |  B
 1    Experienced Developers   |  Default Number of Reviewers
-2    Joao                     |  2
-3    Pavel                    |
-4    Pawel                    |
-5    Shanna                   |
-6    Robert                   |
-7    Damian                   |
-8    Chris                    |
-9    Kissu                    |
-10   Claudiu                  |
-11   Ximo                     |
+2    Dev2                     |  2
+3    Dev3                     |
+4    Dev4                     |
+5    Dev5                     |
+6    Dev6                     |
+7    Dev7                     |
+8    Dev8                     |
+9    Dev9                     |
+10   Dev10                    |
+11   Dev11                    |
 ```
 
 **Important:**
@@ -212,16 +212,16 @@ poetry run python scripts/rotate_team_reviewers.py
 ```
 | Developer | Reviewer Number | Indexes      | 23-10-2025      | ...
 |-----------|----------------|--------------|-----------------|----
-| Joao      | 2              | 12, 7        | Konstantin, ... | ...
-| Pavel     | 2              | 12, 7        | Konstantin, ... | ...
+| Dev3      | 2              | 12, 7        | Dev8, ...       | ...
+| Dev2      | 2              | 12, 7        | Dev8, ...       | ...
 ```
 
 **AFTER:**
 ```
 | Developer | Number of Reviewers | Preferable Reviewers | 23-10-2025      | ...
 |-----------|---------------------|----------------------|-----------------|----
-| Joao      | 2                   | 12, 7                | Konstantin, ... | ...
-| Pavel     | 2                   | 12, 7                | Konstantin, ... | ...
+| Dev3      | 2                   | 12, 7                | Dev8, ...       | ...
+| Dev2      | 2                   | 12, 7                | Dev8, ...       | ...
 ```
 
 ### Teams Sheet
@@ -230,16 +230,16 @@ poetry run python scripts/rotate_team_reviewers.py
 ```
 | Team       | Default Developer   | Reviewer Number | Indexes | 23-10-2025    | ...
 |------------|---------------------|-----------------|---------|---------------|----
-| Clinical   | Robert, Pavel, Ximo | 2               | 0, 1    | Joao, Pavel   | ...
-| Finance    | Joao                | 2               | 0, 9    | Joao, Ximo    | ...
+| Team1      | Dev5, Dev2, Dev10   | 2               | 0, 1    | Dev3, Dev2    | ...
+| Team2      | Dev3                | 2               | 0, 9    | Dev3, Dev10   | ...
 ```
 
 **AFTER:**
 ```
 | Team       | Team Developers     | Number of Reviewers | 23-10-2025    | ...
 |------------|---------------------|---------------------|---------------|----
-| Clinical   | Robert, Pavel, Ximo | 2                   | Joao, Pavel   | ...
-| Finance    | Joao                | 2                   | Joao, Ximo    | ...
+| Team1      | Dev5, Dev2, Dev10   | 2                   | Dev3, Dev2    | ...
+| Team2      | Dev3                | 2                   | Dev3, Dev10   | ...
 ```
 
 ### Config Sheet (NEW)
@@ -248,16 +248,16 @@ poetry run python scripts/rotate_team_reviewers.py
 ```
 | Experienced Developers | Default Number of Reviewers |
 |------------------------|------------------------------|
-| Joao                   | 2                            |
-| Pavel                  |                              |
-| Pawel                  |                              |
-| Shanna                 |                              |
-| Robert                 |                              |
-| Damian                 |                              |
-| Chris                  |                              |
-| Kissu                  |                              |
-| Claudiu                |                              |
-| Ximo                   |                              |
+| Dev2                   | 2                            |
+| Dev3                   |                              |
+| Dev4                   |                              |
+| Dev5                   |                              |
+| Dev6                   |                              |
+| Dev7                   |                              |
+| Dev8                   |                              |
+| Dev9                   |                              |
+| Dev10                  |                              |
+| Dev11                  |                              |
 ```
 
 ---
@@ -335,7 +335,7 @@ If you need to revert to the old system:
 3. **Delete the Config sheet**
 4. **Re-add GitHub Secrets:**
    - `DEFAULT_REVIEWER_NUMBER=2`
-   - `EXPERIENCED_DEV_NAMES=Joao, Pavel, Pawel, Shanna, Robert, Damian, Chris, Kissu, Claudiu, Ximo`
+   - `EXPERIENCED_DEV_NAMES=Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10, Dev11`
    - `REVIEWERS_CONFIG_LIST=` (if you were using the old index-based system)
 5. **Revert code changes:**
    ```bash
@@ -380,14 +380,14 @@ The old Teams rotation used a manual, index-based configuration system:
 
 **Example of Old System:**
 ```
-Team: Clinical Foundation
+Team: Team1
 Indexes: 0, 1
 
 Where:
-- 0 = First developer in the list (e.g., Joao)
-- 1 = Second developer in the list (e.g., Pavel)
+- 0 = First developer in the list (e.g., Dev3)
+- 1 = Second developer in the list (e.g., Dev2)
 
-So Clinical Foundation would always get Joao and Pavel as reviewers.
+So Team1 would always get Dev3 and Dev2 as reviewers.
 ```
 
 **Problems with Old System:**
@@ -425,14 +425,14 @@ For each team, check the "Team Developers" column:
 
 **Example of New System:**
 ```
-Team: Clinical Foundation
-Team Developers: Robert, Pavel, Ximo
+Team: Team1
+Team Developers: Dev5, Dev2, Dev10
 Number of Reviewers: 2
 
 Logic:
 → Team has 3 members, needs 2 reviewers
-→ Randomly select 2 from [Robert, Pavel, Ximo]
-→ Result: Pavel, Ximo (for this rotation)
+→ Randomly select 2 from [Dev5, Dev2, Dev10]
+→ Result: Dev2, Dev10 (for this rotation)
 ```
 
 **Benefits of New System:**
@@ -475,9 +475,9 @@ If you need custom logic, you would need to modify `scripts/rotate_team_reviewer
 ```
 | Team       | Team Developers | Number of Reviewers | ...
 |------------|-----------------|---------------------|----
-| Clinical   | Robert, Pavel   | 3                   | ... (3 reviewers)
-| Finance    | Joao            |                     | ... (uses default: 2)
-| Enterprise | Shanna          | 1                   | ... (1 reviewer)
+| Team1      | Dev5, Dev2      | 3                   | ... (3 reviewers)
+| Team2      | Dev3            |                     | ... (uses default: 2)
+| Team3      | Dev1            | 1                   | ... (1 reviewer)
 ```
 
 ---

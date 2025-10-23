@@ -8,7 +8,7 @@ BUSINESS LOGIC:
 1. Each developer can specify their own "Number of Reviewers" in the
    Google Sheet
    - Uses DEFAULT_REVIEWER_NUMBER as fallback if column is empty
-   - Allows per-developer customization (e.g., Joao needs 2, Pavel needs 3)
+   - Allows per-developer customization (e.g., Dev3 needs 2, Dev2 needs 3)
 
 2. Experience-Based Assignment Rules:
    a) NON-EXPERIENCED DEVELOPERS:
@@ -45,28 +45,28 @@ BUSINESS LOGIC:
    - Config sheet: Lists experienced developers
 
 EXAMPLE 1 (Non-Experienced Developer):
-Developer: Shanna (non-experienced)
+Developer: Dev1 (non-experienced)
 Number of Reviewers: 2
-Preferable Reviewers: Pavel, Dawid
-Experienced Devs: Pavel, Claudiu, Chris, Robert
+Preferable Reviewers: Dev2, Dev11
+Experienced Devs: Dev2, Dev3, Dev4, Dev5
 
 Allocation Process:
-1. Try preferable: Pavel (✓ experienced) → assigned
-   (Dawid skipped - not experienced)
-2. Fill remaining: Claudiu (✓ experienced) → assigned
-Result: Shanna → reviewed by Pavel, Claudiu
+1. Try preferable: Dev2 (✓ experienced) → assigned
+   (Dev11 skipped - not experienced)
+2. Fill remaining: Dev3 (✓ experienced) → assigned
+Result: Dev1 → reviewed by Dev2, Dev3
 
 EXAMPLE 2 (Experienced Developer):
-Developer: Pavel (experienced)
+Developer: Dev2 (experienced)
 Number of Reviewers: 2
-Preferable Reviewers: Claudiu, Shanna
-Experienced Devs: Pavel, Claudiu, Chris, Robert
+Preferable Reviewers: Dev3, Dev1
+Experienced Devs: Dev2, Dev3, Dev4, Dev5
 
 Allocation Process:
-1. Try preferable: Claudiu (✓ available) → assigned
-2. Check experienced: Claudiu already assigned → requirement met ✓
-3. Fill remaining: Can add 1 non-experienced (e.g., Shanna) → assigned
-Result: Pavel → reviewed by Claudiu, Shanna
+1. Try preferable: Dev3 (✓ available) → assigned
+2. Check experienced: Dev3 already assigned → requirement met ✓
+3. Fill remaining: Can add 1 non-experienced (e.g., Dev1) → assigned
+Result: Dev2 → reviewed by Dev3, Dev1
 
 SCHEDULE:
 - Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
