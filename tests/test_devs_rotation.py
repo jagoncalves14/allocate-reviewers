@@ -8,7 +8,7 @@ from scripts.rotate_devs_reviewers import (
     allocate_reviewers,
     shuffle_and_get_the_most_available_names,
 )
-from data_types import Developer
+from lib.data_types import Developer
 from tests.conftest import DEVS
 from tests.utils import mutate_devs
 

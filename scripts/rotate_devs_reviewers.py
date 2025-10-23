@@ -49,18 +49,23 @@ NOTE: Uses the FIRST sheet/tab in the Google Sheet (index 0)
 """
 
 import os
+import sys
 import random
 import traceback
 from typing import List, Set
 from datetime import datetime
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import find_dotenv, load_dotenv
 
-from data_types import Developer, SelectableConfigure
-from env_constants import (
+from lib.data_types import Developer, SelectableConfigure
+from lib.env_constants import (
     EXPECTED_HEADERS_FOR_ALLOCATION,
 )
-from utilities import (
+from lib.utilities import (
     load_developers_from_sheet,
     write_exception_to_sheet,
     get_remote_sheet,

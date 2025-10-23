@@ -44,19 +44,24 @@ or manually via GitHub Actions.
 NOTE: Uses the SECOND sheet/tab in the Google Sheet (index 1)
 """
 
+import sys
 import traceback
 from typing import List
 from datetime import datetime
+from pathlib import Path
 
-from utilities import (
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from lib.utilities import (
     get_remote_sheet,
     write_exception_to_sheet,
     load_developers_from_sheet,
     column_number_to_letter,
     update_current_team_rotation,
 )
-from data_types import Developer
-from env_constants import (
+from lib.data_types import Developer
+from lib.env_constants import (
     EXPECTED_HEADERS_FOR_ROTATION,
     TEAM_HEADER,
 )
@@ -87,7 +92,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     - Prioritizes developers with fewer assignments for fairness
     """
     import random
-    from env_constants import EXPERIENCED_DEV_NAMES
+    from lib.env_constants import EXPERIENCED_DEV_NAMES
 
     # Get list of experienced developers
     experienced_devs = list(EXPERIENCED_DEV_NAMES)
@@ -174,7 +179,7 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    from env_constants import TEAMS_SHEET
+    from lib.env_constants import TEAMS_SHEET
 
     with get_remote_sheet(TEAMS_SHEET) as sheet:
         records = sheet.get_all_records(
@@ -264,7 +269,7 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
 
 if __name__ == "__main__":
     import os
-    from env_constants import (
+    from lib.env_constants import (
         TEAM_DEVELOPERS_HEADER,
         TEAM_REVIEWER_NUMBER_HEADER,
         DEFAULT_REVIEWER_NUMBER,

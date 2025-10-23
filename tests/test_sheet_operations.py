@@ -9,13 +9,13 @@ from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
 from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
-from utilities import (
+from lib.utilities import (
     get_remote_sheet,
     load_developers_from_sheet,
     write_exception_to_sheet,
 )
-from data_types import Developer
-from env_constants import (
+from lib.data_types import Developer
+from lib.env_constants import (
     DEVS_SHEET,
     DRIVE_SCOPE,
     EXPECTED_HEADERS_FOR_ALLOCATION,
@@ -26,8 +26,8 @@ from tests.utils import mutate_devs
 
 
 @patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAME": "S"})
-@patch("utilities.ServiceAccountCredentials")
-@patch("utilities.gspread")
+@patch("lib.utilities.ServiceAccountCredentials")
+@patch("lib.utilities.gspread")
 def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) -> None:
     mocked_credential = Mock(spec=ServiceAccountCredentials)
     mocked_service_account.from_json_keyfile_name.return_value = mocked_credential

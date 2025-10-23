@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from scripts.rotate_team_reviewers import assign_team_reviewers, parse_team_developers
-from data_types import Developer
+from lib.data_types import Developer
 
 EXPERIENCED_DEVS = {"Pavel", "Joao", "Chris", "Robert", "Claudiu"}
 
@@ -32,7 +32,7 @@ class TestParseTeamDevelopers:
 class TestAssignTeamReviewers:
     """Test team reviewer assignment with load balancing"""
 
-    @patch("env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
     def test_team_with_no_members(self):
         """Team with 0 members should get N random experienced devs"""
         teams = [
@@ -52,7 +52,7 @@ class TestAssignTeamReviewers:
             for name in teams[0].reviewer_names
         )
 
-    @patch("env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
     def test_team_with_fewer_members_than_needed(self):
         """Team with 1 member needing 2 reviewers"""
         teams = [
@@ -77,7 +77,7 @@ class TestAssignTeamReviewers:
             for name in other_reviewers
         )
 
-    @patch("env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
     def test_team_with_enough_members(self):
         """Team with 3 members needing 2 reviewers"""
         teams = [
@@ -98,7 +98,7 @@ class TestAssignTeamReviewers:
             for name in teams[0].reviewer_names
         )
 
-    @patch("env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
     def test_load_balancing_across_multiple_teams(self):
         """Load balancing should distribute assignments fairly"""
         teams = [
@@ -132,7 +132,7 @@ class TestAssignTeamReviewers:
         # No dev should have more than 2 assignments (6/5 = 1.2, round up)
         assert all(count <= 2 for count in assignment_count.values())
 
-    @patch("env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
     def test_different_reviewer_numbers_per_team(self):
         """Each team can have different reviewer requirements"""
         teams = [

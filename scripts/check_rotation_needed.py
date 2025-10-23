@@ -8,11 +8,15 @@ import os
 import sys
 import argparse
 from datetime import datetime
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-from env_constants import (
+from lib.env_constants import (
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,
 )
@@ -120,7 +124,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Select appropriate headers and sheet index based on sheet type
-    from env_constants import DEVS_SHEET, TEAMS_SHEET
+    from lib.env_constants import DEVS_SHEET, TEAMS_SHEET
 
     if args.sheet_type == "teams":
         expected_headers = EXPECTED_HEADERS_FOR_ROTATION
