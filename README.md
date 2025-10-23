@@ -39,18 +39,20 @@ Assigns reviewers to teams based on team composition:
 
 ## Environment Variables / GitHub Secrets
 
-**CREDENTIAL_FILE** (Local development only): Path to the Google Service Account credentials JSON file.
+**Required Secrets:**
 
-**GOOGLE_CREDENTIALS_JSON** (GitHub Actions): Full JSON content of your Google Service Account credentials file.
+1. **GOOGLE_CREDENTIALS_JSON** (GitHub Actions): Full JSON content of your Google Service Account credentials file
+2. **SHEET_NAME**: The name of your Google Sheet (e.g., "PVC Front End - Code Reviewers")
 
-**SHEET_NAME**: The name of the Google Sheet (the code will use the first two sheet tabs by index).
+**For Local Development:**
+- **CREDENTIAL_FILE**: Path to your Service Account JSON file (usually `credentials.json`)
+- **SHEET_NAME**: Same as above
 
-**DEFAULT_REVIEWER_NUMBER**: Default number of reviewers (used as fallback when "Number of Reviewers" column is empty).
+**Configuration (No longer in secrets!):**
+- ✨ **Default Number of Reviewers**: Now stored in Config sheet (Cell B2)
+- ✨ **Experienced Developer Names**: Now stored in Config sheet (Column A, from A2 onwards)
 
-**EXPERIENCED_DEV_NAMES**: Comma-separated list of experienced developer names (e.g., `"Joao, Pavel, Chris, Robert"`).
-- Used by **both** individual developer and team rotations
-- Individual Developers: Ensures every developer gets at least one experienced reviewer
-- Teams: Used to fill reviewer slots for teams with insufficient members
+This means you can update configuration directly in the Google Sheet without touching GitHub Secrets! 🎉
 
 
 # Usage guide
@@ -68,15 +70,20 @@ Assigns reviewers to teams based on team composition:
 
 3. **Setup Google Sheet**:
    - Create a new Google Sheet
-   - Create two tabs (you can name them whatever you like - the code uses sheet indices)
-     - **First tab** (index 0): Individual developers (e.g., "Developers", "FE Devs", "BE Devs", etc.)
-     - **Second tab** (index 1): Teams (e.g., "Teams", "Team Rotation", etc.)
+   - Create three tabs (the code uses sheet indices, so you can name them whatever you like):
+     - **First tab (Config)**: Configuration sheet
+       - A1: "Experienced Developers", B1: "Default Number of Reviewers"
+       - A2+: List experienced developer names (one per row)
+       - B2: Enter default number (e.g., "2")
+     - **Second tab**: Individual developers (e.g., "FE Devs", "Developers", etc.)
+     - **Third tab**: Teams (e.g., "Teams", "Team Rotation", etc.)
    - Copy the template structure from `example.xlsx`
    - Share the sheet with your Service Account email
 
 4. **Setup environment**:
-   - Copy `.env_template` to `.env`
-   - Fill in the required values (CREDENTIAL_FILE, SHEET_NAME, etc.)
+   - Copy `.env_template` to `.env` (if it exists)
+   - Fill in: `CREDENTIAL_FILE=credentials.json` and `SHEET_NAME=your-sheet-name`
+   - Note: No need for DEFAULT_REVIEWER_NUMBER or EXPERIENCED_DEV_NAMES!
 
 5. **Install dependencies**:
    ```bash
@@ -85,10 +92,10 @@ Assigns reviewers to teams based on team composition:
 
 6. **Run scripts**:
    ```bash
-   # For individual developer allocation (first sheet)
+   # For individual developer allocation (second sheet)
    poetry run python scripts/rotate_devs_reviewers.py
    
-   # For teams rotation (second sheet)
+   # For teams rotation (third sheet)
    poetry run python scripts/rotate_team_reviewers.py
    ```  
 
@@ -187,23 +194,28 @@ Two additional workflows are available for **manual execution only** (no cron):
 
 ### Google Sheet Structure
 
-Your Google Sheet should have **two sheet tabs** (you can name them whatever you like):
+Your Google Sheet should have **three sheet tabs**:
 
-**First Sheet (index 0)** - Individual developers
+**First Sheet (Config)** - Configuration
+- Column A: List of experienced developer names (one per row, starting from A2)
+- Column B2: Default number of reviewers (e.g., "2")
+- Header row (row 1): "Experienced Developers" in A1, "Default Number of Reviewers" in B1
+
+**Second Sheet (index 1)** - Individual developers
 - Example names: "Developers", "FE Devs", "BE Devs", etc.
 - Column A: `Developer` - Developer name
 - Column B: `Number of Reviewers` - How many reviewers this developer needs
 - Column C: `Preferable Reviewers` - Comma-separated list of preferred reviewer names
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
-**Second Sheet (index 1)** - Team-based rotation
+**Third Sheet (index 2)** - Team-based rotation
 - Example names: "Teams", "Team Rotation", "Projects", etc.
 - Column A: `Team` - Team name
 - Column B: `Team Developers` - Comma-separated list of developers in this team
-- Column C: `Number of Reviewers` - How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
+- Column C: `Number of Reviewers` - How many reviewers this team needs (uses value from Config sheet if empty)
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
-**Note:** The code uses sheet indices (0 for first, 1 for second) instead of sheet names, so you're free to name your tabs whatever makes sense for your team!
+**Note:** The code uses sheet indices (0 for Config, 1 for Individual Developers, 2 for Teams) instead of sheet names, so you're free to name your tabs whatever makes sense for your team!
 
 ### How It Works
 

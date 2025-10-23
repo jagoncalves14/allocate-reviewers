@@ -129,11 +129,11 @@ def main() -> None:
     if args.sheet_type == "teams":
         expected_headers = EXPECTED_HEADERS_FOR_ROTATION
         sheet_index = TEAMS_SHEET
-        print("Checking second sheet (Teams) rotation...")
+        print("Checking third sheet (Teams) rotation...")
     else:
         expected_headers = EXPECTED_HEADERS_FOR_ALLOCATION
         sheet_index = DEVS_SHEET
-        print("Checking first sheet (Individual Developers) rotation...")
+        print("Checking second sheet (Individual Developers) rotation...")
 
     last_rotation_date = get_last_rotation_date(expected_headers, sheet_index)
 

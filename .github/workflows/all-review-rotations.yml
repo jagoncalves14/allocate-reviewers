@@ -65,8 +65,6 @@ jobs:
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
-          DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
-          EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
           MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       
       # ========================================
@@ -100,8 +98,6 @@ jobs:
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
-          DEFAULT_REVIEWER_NUMBER: ${{ secrets.DEFAULT_REVIEWER_NUMBER }}
-          EXPERIENCED_DEV_NAMES: ${{ secrets.EXPERIENCED_DEV_NAMES }}
           MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       
       # ========================================

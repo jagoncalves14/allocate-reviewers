@@ -11,8 +11,9 @@ DRIVE_SCOPE = [
 SHEET_NAME = os.environ.get("SHEET_NAME")
 
 # Sheet indices (0-based)
-DEVS_SHEET = 0  # First sheet - Individual developers
-TEAMS_SHEET = 1  # Second sheet - Teams
+CONFIG_SHEET = 0  # First sheet - Configuration
+DEVS_SHEET = 1  # Second sheet - Individual developers
+TEAMS_SHEET = 2  # Third sheet - Teams
 
 # Column names for Individual Developers allocation
 INDIVIDUAL_DEVELOPERS_COLUMNS = [
@@ -41,11 +42,6 @@ TEAM_REVIEWER_NUMBER_HEADER = TEAMS_COLUMNS[2]
 EXPECTED_HEADERS_FOR_ALLOCATION = INDIVIDUAL_DEVELOPERS_COLUMNS
 EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 
-# Environment variables
-DEFAULT_REVIEWER_NUMBER = int(
-    os.environ.get("DEFAULT_REVIEWER_NUMBER") or "1"
-)
-_experienced_devs_str = os.environ.get("EXPERIENCED_DEV_NAMES", "")
-EXPERIENCED_DEV_NAMES = (
-    set(_experienced_devs_str.split(", ")) if _experienced_devs_str else set()
-)
+# Default values (can be overridden by config sheet)
+DEFAULT_REVIEWER_NUMBER = 1  # Fallback if config sheet is missing
+EXPERIENCED_DEV_NAMES = set()  # Fallback if config sheet is missing

@@ -250,6 +250,14 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
 if __name__ == "__main__":
     try:
+        # Load configuration from Config sheet
+        from lib.config_loader import load_config_from_sheet
+        from lib import env_constants
+        
+        default_reviewer_number, experienced_dev_names = load_config_from_sheet()
+        env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
+        env_constants.EXPERIENCED_DEV_NAMES = experienced_dev_names
+        
         developers = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ALLOCATION
         )
