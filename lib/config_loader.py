@@ -69,6 +69,9 @@ def load_config_from_sheet() -> Tuple[int, Set[str]]:
                 f"Config loaded: Default reviewers={default_reviewer_number}, "
                 f"Experienced devs={len(experienced_devs)}"
             )
+            
+            if experienced_devs:
+                print(f"   Names from Config sheet: {sorted(experienced_devs)}")
 
             return default_reviewer_number, experienced_devs
 

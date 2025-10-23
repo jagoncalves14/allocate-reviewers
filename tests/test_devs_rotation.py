@@ -1,4 +1,3 @@
-import os
 import random
 from typing import List, Set
 from unittest.mock import patch
@@ -43,7 +42,7 @@ def test_shuffle_and_get_the_most_available_names(
     assert sorted(chosen_names) == sorted(expected)
 
 
-@patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "C, E"})
+@patch("lib.env_constants.EXPERIENCED_DEV_NAMES", {"C", "E"})
 def test_allocate_reviewers(mocked_devs: List[Developer]) -> None:
     """
     Test allocation with experience-based rules:
@@ -83,7 +82,7 @@ def test_allocate_reviewers(mocked_devs: List[Developer]) -> None:
                 f"got {non_experienced_reviewers}"
 
 
-@patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10"})
+@patch("lib.env_constants.EXPERIENCED_DEV_NAMES", {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6", "Dev7", "Dev8", "Dev9", "Dev10"})
 def test_allocate_reviewers_realistic_scenario() -> None:
     """
     Test with realistic scenario from the actual sheet.
@@ -149,7 +148,7 @@ def test_allocate_reviewers_realistic_scenario() -> None:
                 f"got {non_exp_reviewers}"
 
 
-@patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10"})
+@patch("lib.env_constants.EXPERIENCED_DEV_NAMES", {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6", "Dev7", "Dev8", "Dev9", "Dev10"})
 def test_allocate_reviewers_multiple_iterations() -> None:
     """
     Run allocation 50 times with different random seeds to ensure
@@ -225,7 +224,7 @@ def test_allocate_reviewers_multiple_iterations() -> None:
     random.seed()
 
 
-@patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "ExpA, ExpB"})
+@patch("lib.env_constants.EXPERIENCED_DEV_NAMES", {"ExpA", "ExpB"})
 def test_allocate_reviewers_minimal_constrained_scenario() -> None:
     """
     Minimal scenario with tight constraints - runs 100 times.
@@ -291,7 +290,7 @@ def test_allocate_reviewers_minimal_constrained_scenario() -> None:
     random.seed()
 
 
-@patch.dict(os.environ, {"EXPERIENCED_DEV_NAMES": "ExpA, ExpB"})
+@patch("lib.env_constants.EXPERIENCED_DEV_NAMES", {"ExpA", "ExpB"})
 def test_allocate_reviewers_extreme_minimal_scenario() -> None:
     """
     Extreme minimal scenario - the ultimate stress test!

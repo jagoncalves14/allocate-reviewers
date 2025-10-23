@@ -101,6 +101,11 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     experienced_devs = list(EXPERIENCED_DEV_NAMES)
     if not experienced_devs:
         raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
+    
+    print(f"\n📊 Team Rotation Summary:")
+    print(f"   Teams to process: {len(teams)}")
+    print(f"   Experienced developers pool: {len(experienced_devs)}")
+    print(f"   {sorted(experienced_devs)}\n")
 
     # Track assignments per developer for load balancing ACROSS ALL TEAMS
     assignment_count: dict[str, int] = {}
@@ -128,9 +133,14 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
         team_members = list(team.preferable_reviewer_names)
         num_members = len(team_members)
         num_reviewers = team.reviewer_number
+        
+        print(f"🔄 Processing Team: {team.name}")
+        print(f"   Team members: {team_members if team_members else '(none)'}")
+        print(f"   Needs: {num_reviewers} reviewers")
 
         if num_members == 0:
             # No team members → assign balanced experienced devs
+            print(f"   Strategy: Team has no members → selecting from experienced devs")
             selected = select_balanced(experienced_devs, num_reviewers)
             team.reviewer_names.update(selected)
             # Track assignments
@@ -138,9 +148,11 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
                 assignment_count[dev_name] = (
                     assignment_count.get(dev_name, 0) + 1
                 )
+            print(f"   ✅ Assigned: {sorted(selected)}")
 
         elif num_members < num_reviewers:
             # Fewer members than needed → use all + fill with experienced devs
+            print(f"   Strategy: Team has {num_members} members, needs {num_reviewers} → using all members + experienced devs")
             team.reviewer_names.update(team_members)
             # Track team member assignments
             for dev_name in team_members:
@@ -163,9 +175,13 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
                     assignment_count[dev_name] = (
                         assignment_count.get(dev_name, 0) + 1
                     )
+                print(f"   ✅ Assigned: {sorted(team_members)} + {sorted(selected)}")
+            else:
+                print(f"   ✅ Assigned: {sorted(team_members)}")
 
         else:
             # Enough members → select balanced from team
+            print(f"   Strategy: Team has {num_members} members, needs {num_reviewers} → selecting from team")
             selected = select_balanced(team_members, num_reviewers)
             team.reviewer_names.update(selected)
             # Track assignments
@@ -173,6 +189,17 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
                 assignment_count[dev_name] = (
                     assignment_count.get(dev_name, 0) + 1
                 )
+            print(f"   ✅ Assigned: {sorted(selected)}")
+        
+        print()
+    
+    # Show load balancing summary
+    if assignment_count:
+        print(f"📊 Load Balancing Summary:")
+        print(f"   Total assignments: {sum(assignment_count.values())}")
+        for dev, count in sorted(assignment_count.items(), key=lambda x: (-x[1], x[0])):
+            print(f"   {dev}: {count} team(s)")
+        print()
 
 
 def write_reviewers_to_sheet(teams: List[Developer]) -> None:

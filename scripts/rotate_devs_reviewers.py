@@ -129,9 +129,9 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
-    experienced_dev_names = set(
-        os.environ.get("EXPERIENCED_DEV_NAMES", "").split(", ")
-    )
+    from lib.env_constants import EXPERIENCED_DEV_NAMES
+    
+    experienced_dev_names = set(EXPERIENCED_DEV_NAMES)
 
     all_dev_names = set((dev.name for dev in devs))
     valid_experienced_dev_names = set(
@@ -141,8 +141,18 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
     
     print(f"\n📊 Developer Classification:")
-    print(f"   Experienced: {sorted(valid_experienced_dev_names)}")
-    print(f"   Non-experienced: {sorted(non_experienced_dev_names)}")
+    print(f"   Names in FE Developers sheet: {sorted(all_dev_names)}")
+    print(f"   Names from EXPERIENCED_DEV_NAMES env: {sorted(experienced_dev_names)}")
+    print(f"   ✅ Matched (Experienced): {sorted(valid_experienced_dev_names)}")
+    print(f"   ❌ Non-experienced: {sorted(non_experienced_dev_names)}")
+    
+    # Show mismatches
+    unmatched_from_config = experienced_dev_names - all_dev_names
+    if unmatched_from_config:
+        print(f"\n⚠️  WARNING: These names from Config don't match any developer:")
+        for name in sorted(unmatched_from_config):
+            print(f"      '{name}' (length: {len(name)}, repr: {repr(name)})")
+    
     print(f"   Total: {len(all_dev_names)} developers\n")
 
     # To process devs with preferable_reviewer_names first.
