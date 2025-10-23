@@ -44,7 +44,7 @@ def load_developers_from_sheet(
         if record[PREFERABLE_REVIEWER_HEADER]
         else set(),
     ),
-    sheet_index: int = 0,
+    sheet_index: int = DEVS_SHEET,
 ) -> List[Developer]:
     with get_remote_sheet(sheet_index) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
@@ -58,12 +58,12 @@ def load_developers_from_sheet(
 
 
 @contextmanager
-def get_remote_sheet(sheet_index: int = 0) -> Worksheet:
+def get_remote_sheet(sheet_index: int = DEVS_SHEET) -> Worksheet:
     """
     Fetch the Worksheet data from remote Google sheet
 
     Args:
-        sheet_index: Index of the sheet (0 for first, 1 for second)
+        sheet_index: Index of the sheet (0=Config, 1=Individual Developers, 2=Teams)
     """
     CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
     SHEET_NAME = os.environ.get("SHEET_NAME")
@@ -82,7 +82,7 @@ def get_remote_sheet(sheet_index: int = 0) -> Worksheet:
 def write_exception_to_sheet(
     expected_headers: List[str],
     error: str,
-    sheet_index: int = 0,
+    sheet_index: int = DEVS_SHEET,
 ) -> None:
     column_index = len(expected_headers) + 1
     new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
@@ -94,7 +94,7 @@ def write_exception_to_sheet(
 def update_current_sprint_reviewers(
     expected_headers: List[str],
     devs: List[Developer],
-    sheet_index: int = 0,
+    sheet_index: int = DEVS_SHEET,
 ) -> None:
     """Update reviewers in the current sprint column (for manual runs)"""
     column_index = len(expected_headers) + 1
