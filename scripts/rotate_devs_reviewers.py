@@ -137,6 +137,13 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     valid_experienced_dev_names = set(
         (name for name in experienced_dev_names if name in all_dev_names)
     )
+    
+    non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
+    
+    print(f"\n📊 Developer Classification:")
+    print(f"   Experienced: {sorted(valid_experienced_dev_names)}")
+    print(f"   Non-experienced: {sorted(non_experienced_dev_names)}")
+    print(f"   Total: {len(all_dev_names)} developers\n")
 
     # To process devs with preferable_reviewer_names first.
     devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
@@ -145,9 +152,12 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         chosen_reviewer_names: Set[str] = set()
         reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
         is_experienced_dev = dev.name in valid_experienced_dev_names
-
-        # Non-experienced devs that can be selected as reviewers
-        non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
+        
+        exp_label = "👨‍💼 Experienced" if is_experienced_dev else "👨‍🎓 Non-experienced"
+        print(f"🔄 Processing {dev.name} ({exp_label}, needs {reviewer_number} reviewers)")
+        
+        # Track non-experienced devs for filtering
+        current_non_experienced = all_dev_names - valid_experienced_dev_names
 
         def selectable_number_getter() -> int:
             return max(reviewer_number - len(chosen_reviewer_names), 0)
@@ -176,7 +186,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             # Count how many non-experienced reviewers already assigned
             non_experienced_count = sum(
                 1 for name in chosen_reviewer_names
-                if name in non_experienced_dev_names
+                if name in current_non_experienced
             )
 
             # Check if we have remaining slots
@@ -194,6 +204,11 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             if not is_experienced_dev
             else dev.preferable_reviewer_names
         )
+        
+        if not is_experienced_dev and dev.preferable_reviewer_names:
+            filtered_out = dev.preferable_reviewer_names - valid_experienced_dev_names
+            if filtered_out:
+                print(f"   ⚠️  Filtered non-experienced from preferable: {filtered_out}")
 
         configures = [
             # Phase 1: Try preferable reviewers first
@@ -213,7 +228,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             ),
             # Phase 4: For exp. devs only, can add up to 1 non-exp.
             SelectableConfigure(
-                names=non_experienced_dev_names,
+                names=current_non_experienced,
                 number_getter=non_experienced_pool_getter,
             ),
         ]
@@ -236,6 +251,22 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         for reviewer in reviewers:
             dev.reviewer_names.add(reviewer.name)
             reviewer.review_for.add(dev.name)
+        
+        # Verify assignment correctness
+        assigned_experienced = chosen_reviewer_names & valid_experienced_dev_names
+        assigned_non_experienced = chosen_reviewer_names & non_experienced_dev_names
+        
+        print(f"   ✅ Assigned: {sorted(chosen_reviewer_names)}")
+        print(f"      (Exp: {len(assigned_experienced)}, Non-exp: {len(assigned_non_experienced)})")
+        
+        # Validation warnings
+        if not is_experienced_dev and assigned_non_experienced:
+            print(f"   ⚠️  WARNING: Non-experienced dev has non-experienced reviewers!")
+        if is_experienced_dev and len(assigned_non_experienced) > 1:
+            print(f"   ⚠️  WARNING: Experienced dev has >1 non-experienced reviewers!")
+        if not assigned_experienced:
+            print(f"   ⚠️  WARNING: No experienced reviewer assigned!")
+        print()
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
