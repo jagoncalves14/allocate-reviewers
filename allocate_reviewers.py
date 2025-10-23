@@ -1,7 +1,7 @@
 """
-FE Devs Allocation - Individual Developer Reviewer Assignment
+Individual Developer Reviewer Assignment
 
-This script allocates reviewers to individual developers for the FE Devs team.
+This script allocates reviewers to individual developers.
 
 BUSINESS LOGIC:
 1. Each developer can specify their own "Number of Reviewers" in the

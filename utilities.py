@@ -43,9 +43,9 @@ def load_developers_from_sheet(
         if record[PREFERABLE_REVIEWER_HEADER]
         else set(),
     ),
-    tab_name: str = "FE Devs",
+    sheet_index: int = 0,
 ) -> List[Developer]:
-    with get_remote_sheet(tab_name) as sheet:
+    with get_remote_sheet(sheet_index) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
 
     input_developers = map(
@@ -74,12 +74,12 @@ def get_remote_sheet(tab_name: str = "FE Devs") -> Worksheet:
 def write_exception_to_sheet(
     expected_headers: List[str],
     error: str,
-    tab_name: str = "FE Devs",
+    sheet_index: int = 0,
 ) -> None:
     column_index = len(expected_headers) + 1
     new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
 
-    with get_remote_sheet(tab_name) as sheet:
+    with get_remote_sheet(sheet_index) as sheet:
         sheet.insert_cols([new_column], column_index)
 
 
@@ -226,13 +226,13 @@ def update_current_team_rotation(
     expected_headers: List[str], teams: List[Developer]
 ) -> None:
     """
-    Update reviewers in the current rotation column (for Teams manual runs)
+    Update reviewers in the current rotation column (for manual runs on second sheet)
     """
     from env_constants import TEAM_HEADER
 
     column_index = len(expected_headers) + 1
 
-    with get_remote_sheet("Teams") as sheet:
+    with get_remote_sheet(1) as sheet:  # Second sheet (index 1)
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (
