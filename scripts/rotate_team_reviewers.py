@@ -64,6 +64,10 @@ from lib.data_types import Developer
 from lib.env_constants import (
     EXPECTED_HEADERS_FOR_ROTATION,
     TEAM_HEADER,
+    TEAMS_SHEET,
+    TEAM_DEVELOPERS_HEADER,
+    TEAM_REVIEWER_NUMBER_HEADER,
+    DEFAULT_REVIEWER_NUMBER,
 )
 
 
@@ -92,7 +96,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     - Prioritizes developers with fewer assignments for fairness
     """
     import random
-    from lib.env_constants import EXPERIENCED_DEV_NAMES
+    from lib.env_constants import EXPERIENCED_DEV_NAMES  # noqa: F811
 
     # Get list of experienced developers
     experienced_devs = list(EXPERIENCED_DEV_NAMES)
@@ -178,8 +182,6 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
     column_index = len(EXPECTED_HEADERS_FOR_ROTATION)
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
-
-    from lib.env_constants import TEAMS_SHEET
 
     with get_remote_sheet(TEAMS_SHEET) as sheet:
         records = sheet.get_all_records(
@@ -269,11 +271,6 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
 
 if __name__ == "__main__":
     import os
-    from lib.env_constants import (
-        TEAM_DEVELOPERS_HEADER,
-        TEAM_REVIEWER_NUMBER_HEADER,
-        DEFAULT_REVIEWER_NUMBER,
-    )
 
     try:
         teams = load_developers_from_sheet(
