@@ -26,7 +26,7 @@ MINIMUM_DAYS_BETWEEN_ROTATIONS = 15
 
 
 def get_last_rotation_date(
-    expected_headers: list[str], tab_name: str = "FE Devs"
+    expected_headers: list[str], sheet_index: int = 0
 ) -> datetime | None:
     """
     Read the Google Sheet and find the most recent rotation date.
@@ -51,7 +51,7 @@ def get_last_rotation_date(
         )
         client = gspread.authorize(credential)
         spreadsheet = client.open(SHEET_NAME)
-        sheet = spreadsheet.worksheet(tab_name)
+        sheet = spreadsheet.get_worksheet(sheet_index)
 
         # Get the first row (headers)
         first_row = sheet.row_values(1)
@@ -113,23 +113,25 @@ def main() -> None:
     )
     parser.add_argument(
         "--sheet-type",
-        choices=["fe-devs", "teams"],
-        default="fe-devs",
-        help="Type of sheet to check (default: fe-devs)",
+        choices=["devs", "teams"],
+        default="devs",
+        help="Type of sheet to check (default: devs)",
     )
     args = parser.parse_args()
 
-    # Select appropriate headers and tab based on sheet type
+    # Select appropriate headers and sheet index based on sheet type
+    from env_constants import DEVS_SHEET, TEAMS_SHEET
+
     if args.sheet_type == "teams":
         expected_headers = EXPECTED_HEADERS_FOR_ROTATION
-        tab_name = "Teams"
-        print("Checking Teams sheet rotation...")
+        sheet_index = TEAMS_SHEET
+        print("Checking second sheet (Teams) rotation...")
     else:
         expected_headers = EXPECTED_HEADERS_FOR_ALLOCATION
-        tab_name = "FE Devs"
-        print("Checking FE Devs sheet rotation...")
+        sheet_index = DEVS_SHEET
+        print("Checking first sheet (Individual Developers) rotation...")
 
-    last_rotation_date = get_last_rotation_date(expected_headers, tab_name)
+    last_rotation_date = get_last_rotation_date(expected_headers, sheet_index)
 
     if last_rotation_date is None:
         print("No previous rotation found - rotation is needed")

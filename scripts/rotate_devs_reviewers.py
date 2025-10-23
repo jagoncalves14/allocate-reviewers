@@ -1,7 +1,7 @@
 """
-Individual Developer Reviewer Assignment
+Individual Developer Reviewer Rotation
 
-This script allocates reviewers to individual developers.
+This script assigns reviewers to individual developers (rotate_devs_reviewers.py).
 
 BUSINESS LOGIC:
 1. Each developer can specify their own "Number of Reviewers" in the

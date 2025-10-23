@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from allocate_reviewers import (
+from scripts.rotate_devs_reviewers import (
     allocate_reviewers,
     shuffle_and_get_the_most_available_names,
 )

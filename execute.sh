@@ -5,4 +5,5 @@ SCRIPT_PATH=
 source $VIRTUAL_PATH
 cd $SCRIPT_PATH
 poetry install
-python allocate_reviewers.py #or rotate_reviewers.py
+python scripts/rotate_devs_reviewers.py  # For individual developers
+# python scripts/rotate_team_reviewers.py  # For teams

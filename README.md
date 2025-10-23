@@ -1,11 +1,11 @@
 # Functionality
 Automated reviewer assignment system that runs via GitHub Actions. The system manages two types of rotations:
-- **FE Devs Allocation**: Individual developer reviewer assignments with load balancing
+- **Individual Developer Allocation**: Developer-to-developer reviewer assignments with load balancing
 - **Teams Rotation**: Team-based reviewer assignments with smart member selection
 
-All configuration is managed through Google Sheets, and assignments are automatically updated every 15 days or can be triggered manually.
+All configuration is managed through Google Sheets (uses first and second sheet tabs), and assignments are automatically updated every 15 days or can be triggered manually.
 
-## FE Devs Allocation (Individual Developers)
+## Individual Developer Allocation
 Assigns reviewers to individual developers with intelligent load balancing:
 - **Random selection** with preference support for specific reviewers
 - **Load balanced**: Prevents scenarios where one reviewer gets 5 assignments while others get 0
@@ -14,17 +14,17 @@ Assigns reviewers to individual developers with intelligent load balancing:
 
 ## Teams Rotation
 Assigns reviewers to teams based on team composition:
-- **Smart selection**: Uses team members when available, fills with experienced devs when needed
+- **Smart selection**: Uses team members when available, fills with experienced developers when needed
 - **Load balanced**: Distributes team review assignments fairly across all developers
 - **Flexible**: Each team can specify its own number of reviewers
-- **Automated**: Runs on the same schedule as FE Devs allocation
+- **Automated**: Runs on the same schedule as Individual Developers allocation
 
 
 # Configurable parameters
 
 ## Google Sheet Columns
 
-### FE Devs Tab:
+### First Sheet (Individual Developers):
 - **"Developer"**: Unique name of developers in the team
 - **"Number of Reviewers"**: How many reviewers should be assigned for this developer
 - **"Preferable Reviewers"**: Comma-separated list of preferred reviewer names (optional)
@@ -32,7 +32,7 @@ Assigns reviewers to teams based on team composition:
   - If more reviewers are needed, they will be picked randomly from other developers
   - Load balancing ensures fair distribution even with preferences
 
-### Teams Tab:
+### Second Sheet (Teams):
 - **"Team"**: Unique team name
 - **"Team Developers"**: Comma-separated list of developers in this team
 - **"Number of Reviewers"**: How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
@@ -43,13 +43,13 @@ Assigns reviewers to teams based on team composition:
 
 **GOOGLE_CREDENTIALS_JSON** (GitHub Actions): Full JSON content of your Google Service Account credentials file.
 
-**SHEET_NAME**: The name of the Google Sheet that contains both "FE Devs" and "Teams" tabs.
+**SHEET_NAME**: The name of the Google Sheet (the code will use the first two sheet tabs by index).
 
 **DEFAULT_REVIEWER_NUMBER**: Default number of reviewers (used as fallback when "Number of Reviewers" column is empty).
 
 **EXPERIENCED_DEV_NAMES**: Comma-separated list of experienced developer names (e.g., `"Joao, Pavel, Chris, Robert"`).
-- Used by **both** FE Devs and Teams rotations
-- FE Devs: Ensures every developer gets at least one experienced reviewer
+- Used by **both** individual developer and team rotations
+- Individual Developers: Ensures every developer gets at least one experienced reviewer
 - Teams: Used to fill reviewer slots for teams with insufficient members
 
 
@@ -68,7 +68,9 @@ Assigns reviewers to teams based on team composition:
 
 3. **Setup Google Sheet**:
    - Create a new Google Sheet
-   - Create two tabs: "FE Devs" and "Teams"
+   - Create two tabs (you can name them whatever you like - the code uses sheet indices)
+     - **First tab** (index 0): Individual developers (e.g., "Developers", "FE Devs", "BE Devs", etc.)
+     - **Second tab** (index 1): Teams (e.g., "Teams", "Team Rotation", etc.)
    - Copy the template structure from `example.xlsx`
    - Share the sheet with your Service Account email
 
@@ -83,11 +85,11 @@ Assigns reviewers to teams based on team composition:
 
 6. **Run scripts**:
    ```bash
-   # For FE Devs allocation
-   poetry run python allocate_reviewers.py
+   # For individual developer allocation (first sheet)
+   poetry run python scripts/rotate_devs_reviewers.py
    
-   # For Teams rotation
-   poetry run python rotate_reviewers.py
+   # For teams rotation (second sheet)
+   poetry run python scripts/rotate_team_reviewers.py
    ```  
 
 ## Automated Execution with GitHub Actions
@@ -98,12 +100,12 @@ Assigns reviewers to teams based on team composition:
 
 This is the **only workflow with a cron schedule**. It runs both rotations sequentially:
 
-1. **FE Devs Allocation** (Individual Developers)
+1. **Individual Developer Allocation** (First Sheet)
    - Checks if at least 15 days have passed since the last rotation
    - Allocates reviewers randomly with experienced dev guarantee
    - **Load Balanced**: Prioritizes reviewers with fewer assignments
 
-2. **Teams Rotation**
+2. **Teams Rotation** (Second Sheet)
    - Checks if at least 15 days have passed since the last rotation
    - Assigns reviewers to teams based on team composition
    - Each team can specify its own "Number of Reviewers" in the sheet
@@ -120,12 +122,12 @@ This is the **only workflow with a cron schedule**. It runs both rotations seque
 ### Manual Workflows (On-Demand Only) 🔧
 
 Two additional workflows are available for **manual execution only** (no cron):
-- **"Run FE Devs Review Rotation"** (`.github/workflows/fe-devs-review-rotation.yml`) - Run FE Devs allocation only
-- **"Run Teams Review Rotation"** (`.github/workflows/teams-review-rotation.yml`) - Run Teams rotation only
+- **"Run Developers Review Rotation"** (`.github/workflows/devs-review-rotation.yml`) - Run individual developer allocation only
+- **"Run Teams Review Rotation"** (`.github/workflows/teams-review-rotation.yml`) - Run teams rotation only
 
 **Use cases:**
-- Need to update only FE Devs without touching Teams
-- Need to update only Teams without touching FE Devs
+- Need to update only individual developers without touching teams
+- Need to update only teams without touching individual developers
 - Want granular control over individual rotations
 - Emergency rotation needed outside the 15-day schedule
 
@@ -137,13 +139,13 @@ Two additional workflows are available for **manual execution only** (no cron):
 - **Enough members**: Selects N members from the team (load-balanced to those with fewest team assignments)
 
 **Example** (Team needs 2 reviewers):
-- Team with 0 members → 2 random experienced devs (e.g., Joao, Pavel)
-- Team with 1 member (Robert) → Robert + 1 experienced dev not from team (e.g., Joao)
-- Team with 2 members (Robert, Pavel) → both members
-- Team with 3+ members (Robert, Pavel, Ximo) → 2 random members (e.g., Pavel, Ximo)
+- Team with 0 members → 2 random experienced developers from the list of all developers
+- Team with 1 member → that one developer of that team + 1 experienced developer not from that team
+- Team with 2 members → the 2 members of that team
+- Team with 3+ members → 2 random members of that team
 
 **Example** (Team needs 3 reviewers):
-- Team with 5 members (Robert, Pavel, Ximo, Joao, Chris) → 3 random members (e.g., Pavel, Ximo, Chris)
+- Team with 5 members → 3 random members of that team
 
 ### Setup Instructions
 
@@ -171,9 +173,9 @@ Two additional workflows are available for **manual execution only** (no cron):
    
    | Workflow | What It Does | When to Use |
    |----------|-------------|-------------|
-   | **Run All Review Rotations** | Runs both FE Devs + Teams | Most common - update everything |
-   | **Run FE Devs Review Rotation** | Runs FE Devs only | Need to update only individual devs |
-   | **Run Teams Review Rotation** | Runs Teams only | Need to update only teams |
+   | **Run All Review Rotations** | Runs both individual developers + teams | Most common - update everything |
+   | **Run Developers Review Rotation** | Runs individual developers only | Need to update only individual developers |
+   | **Run Teams Review Rotation** | Runs teams only | Need to update only teams |
    
    **How to trigger:**
    1. Go to **Actions** tab in your repository
@@ -185,32 +187,37 @@ Two additional workflows are available for **manual execution only** (no cron):
 
 ### Google Sheet Structure
 
-Your Google Sheet should have **two tabs**:
+Your Google Sheet should have **two sheet tabs** (you can name them whatever you like):
 
-**Tab 1: "FE Devs"** (Individual developers)
+**First Sheet (index 0)** - Individual developers
+- Example names: "Developers", "FE Devs", "BE Devs", etc.
 - Column A: `Developer` - Developer name
 - Column B: `Number of Reviewers` - How many reviewers this developer needs
 - Column C: `Preferable Reviewers` - Comma-separated list of preferred reviewer names
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
-**Tab 2: "Teams"** (Team-based rotation)
+**Second Sheet (index 1)** - Team-based rotation
+- Example names: "Teams", "Team Rotation", "Projects", etc.
 - Column A: `Team` - Team name
 - Column B: `Team Developers` - Comma-separated list of developers in this team
 - Column C: `Number of Reviewers` - How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
+**Note:** The code uses sheet indices (0 for first, 1 for second) instead of sheet names, so you're free to name your tabs whatever makes sense for your team!
+
 ### How It Works
 
 - **Scheduled Execution**: Every Wednesday at 5:00 AM Finland Time (3:00 AM UTC), the unified workflow checks both rotations
-- **Date Checking**: Each script reads the most recent sprint/rotation date from its respective Google Sheet tab
-- **Independent Schedules**: FE Devs and Teams rotate independently (can be on different 15-day cycles)
+- **Date Checking**: Each script reads the most recent sprint/rotation date from its respective sheet tab
+- **Independent Schedules**: Individual developers and teams rotate independently (can be on different 15-day cycles)
 - **Smart Execution**: Only runs if 15+ days have passed (or if manually triggered)
 - **Manual Override**: Manual triggers always execute immediately, independent of the schedule
 - **Load Balancing**: Both systems track assignments and prioritize reviewers/developers with fewer assignments
+- **Sheet Access**: Uses sheet indices (0 and 1) instead of names - name your sheets however you like!
 
 ### Load Balancing Details
 
-**FE Devs:**
+**Individual Developers:**
 - Tracks how many developers each reviewer is assigned to
 - Prioritizes reviewers with fewer current assignments
 - Prevents uneven distribution (e.g., one reviewer with 5 assignments, another with 0)

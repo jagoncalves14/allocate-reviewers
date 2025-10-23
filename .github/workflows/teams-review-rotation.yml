@@ -39,7 +39,7 @@ jobs:
             echo "run_rotation=true" >> $GITHUB_OUTPUT
           else
             echo "Scheduled run - checking if 15 days have passed"
-            poetry run python check_rotation_needed.py --sheet-type teams
+            poetry run python scripts/check_rotation_needed.py --sheet-type teams
             if [ $? -eq 0 ]; then
               echo "Rotation needed"
               echo "run_rotation=true" >> $GITHUB_OUTPUT
@@ -54,7 +54,7 @@ jobs:
       
       - name: Run team reviewer rotation
         if: steps.check_rotation.outputs.run_rotation == 'true'
-        run: poetry run python rotate_reviewers.py
+        run: poetry run python scripts/rotate_team_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}

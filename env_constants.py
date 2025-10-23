@@ -10,8 +10,12 @@ DRIVE_SCOPE = [
 ]
 SHEET_NAME = os.environ.get("SHEET_NAME")
 
-# Column names for FE Devs allocation
-FE_DEVS_COLUMNS = [
+# Sheet indices (0-based)
+DEVS_SHEET = 0  # First sheet - Individual developers
+TEAMS_SHEET = 1  # Second sheet - Teams
+
+# Column names for Individual Developers allocation
+INDIVIDUAL_DEVELOPERS_COLUMNS = [
     "Developer",  # Column 0: Developer name
     "Number of Reviewers",  # Column 1: Number of reviewers
     "Preferable Reviewers",  # Column 2: Preferred reviewer names
@@ -25,16 +29,16 @@ TEAMS_COLUMNS = [
 ]
 
 # Convenient access to column names by index
-DEVELOPER_HEADER = FE_DEVS_COLUMNS[0]
-REVIEWER_NUMBER_HEADER = FE_DEVS_COLUMNS[1]
-PREFERABLE_REVIEWER_HEADER = FE_DEVS_COLUMNS[2]
+DEVELOPER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[0]
+REVIEWER_NUMBER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[1]
+PREFERABLE_REVIEWER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[2]
 
 TEAM_HEADER = TEAMS_COLUMNS[0]
 TEAM_DEVELOPERS_HEADER = TEAMS_COLUMNS[1]
 TEAM_REVIEWER_NUMBER_HEADER = TEAMS_COLUMNS[2]
 
 # Expected headers for each sheet type
-EXPECTED_HEADERS_FOR_ALLOCATION = FE_DEVS_COLUMNS
+EXPECTED_HEADERS_FOR_ALLOCATION = INDIVIDUAL_DEVELOPERS_COLUMNS
 EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 
 # Environment variables

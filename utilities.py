@@ -57,7 +57,13 @@ def load_developers_from_sheet(
 
 
 @contextmanager
-def get_remote_sheet(tab_name: str = "FE Devs") -> Worksheet:
+def get_remote_sheet(sheet_index: int = 0) -> Worksheet:
+    """
+    Fetch the Worksheet data from remote Google sheet
+
+    Args:
+        sheet_index: Index of the sheet (0 for first, 1 for second)
+    """
     CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
     SHEET_NAME = os.environ.get("SHEET_NAME")
 
@@ -66,7 +72,8 @@ def get_remote_sheet(tab_name: str = "FE Devs") -> Worksheet:
     )
     client = gspread.authorize(credential)
     spreadsheet = client.open(SHEET_NAME)
-    sheet = spreadsheet.worksheet(tab_name)
+    # Get sheet by index (0-based)
+    sheet = spreadsheet.get_worksheet(sheet_index)
     yield sheet
     client.session.close()
 
@@ -84,12 +91,14 @@ def write_exception_to_sheet(
 
 
 def update_current_sprint_reviewers(
-    expected_headers: List[str], devs: List[Developer]
+    expected_headers: List[str],
+    devs: List[Developer],
+    sheet_index: int = 0,
 ) -> None:
     """Update reviewers in the current sprint column (for manual runs)"""
     column_index = len(expected_headers) + 1
 
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet(sheet_index) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (
@@ -223,16 +232,19 @@ def update_current_sprint_reviewers(
 
 
 def update_current_team_rotation(
-    expected_headers: List[str], teams: List[Developer]
+    expected_headers: List[str],
+    teams: List[Developer],
 ) -> None:
     """
-    Update reviewers in the current rotation column (for manual runs on second sheet)
+    Update reviewers in the current rotation column (manual runs, 2nd sheet)
     """
     from env_constants import TEAM_HEADER
 
     column_index = len(expected_headers) + 1
 
-    with get_remote_sheet(1) as sheet:  # Second sheet (index 1)
+    from env_constants import TEAMS_SHEET
+
+    with get_remote_sheet(TEAMS_SHEET) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (

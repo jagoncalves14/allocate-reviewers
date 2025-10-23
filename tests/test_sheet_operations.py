@@ -8,7 +8,7 @@ from freezegun import freeze_time
 from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-from allocate_reviewers import write_reviewers_to_sheet
+from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
 from utilities import (
     get_remote_sheet,
     load_developers_from_sheet,
@@ -16,6 +16,7 @@ from utilities import (
 )
 from data_types import Developer
 from env_constants import (
+    DEVS_SHEET,
     DRIVE_SCOPE,
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,
@@ -37,14 +38,14 @@ def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) ->
     mocked_spreadsheet = Mock(spec=Spreadsheet)
     mocked_client.open.return_value = mocked_spreadsheet
 
-    with get_remote_sheet("FE Devs") as sheet:
+    with get_remote_sheet(DEVS_SHEET) as sheet:
         mocked_service_account.from_json_keyfile_name.assert_called_once_with(
             "credential_file.json", DRIVE_SCOPE
         )
         mocked_gspread.authorize.assert_called_once_with(mocked_credential)
 
         mocked_client.open.assert_called_once_with("S")
-        mocked_spreadsheet.worksheet.assert_called_once_with("FE Devs")
+        mocked_spreadsheet.get_worksheet.assert_called_once_with(DEVS_SHEET)
 
         mocked_client.session.close.assert_not_called()
 
@@ -69,7 +70,7 @@ def test_load_developers_from_sheet(
 def test_write_reviewers_to_sheet(
     mocked_devs: List[Developer],
 ) -> None:
-    with patch("allocate_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
+    with patch("scripts.rotate_devs_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             DEV_REVIEWERS_MAPPER = {
                 "B": set(("C", "D")),

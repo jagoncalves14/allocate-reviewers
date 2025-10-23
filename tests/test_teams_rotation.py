@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from rotate_reviewers import assign_team_reviewers, parse_team_developers
+from scripts.rotate_team_reviewers import assign_team_reviewers, parse_team_developers
 from data_types import Developer
 
 EXPERIENCED_DEVS = {"Pavel", "Joao", "Chris", "Robert", "Claudiu"}

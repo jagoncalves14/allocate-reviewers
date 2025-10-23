@@ -35,23 +35,23 @@ jobs:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
       
       # ========================================
-      # 1. FE DEVS ALLOCATION (Individual Devs)
+      # 1. INDIVIDUAL DEVELOPERS ALLOCATION
       # ========================================
       
-      - name: Check if FE Devs rotation is needed
-        id: check_fe_devs
+      - name: Check if Individual Developers rotation is needed
+        id: check_individual_developers
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "Manual trigger - forcing FE Devs rotation"
+            echo "Manual trigger - forcing Individual Developers rotation"
             echo "run_rotation=true" >> $GITHUB_OUTPUT
           else
-            echo "Scheduled run - checking FE Devs rotation (15 days)"
-            poetry run python check_rotation_needed.py --sheet-type fe-devs
+            echo "Scheduled run - checking Individual Developers rotation (15 days)"
+                poetry run python scripts/check_rotation_needed.py --sheet-type devs
             if [ $? -eq 0 ]; then
-              echo "FE Devs rotation needed"
+              echo "Individual Developers rotation needed"
               echo "run_rotation=true" >> $GITHUB_OUTPUT
             else
-              echo "FE Devs rotation not needed yet"
+              echo "Individual Developers rotation not needed yet"
               echo "run_rotation=false" >> $GITHUB_OUTPUT
             fi
           fi
@@ -59,9 +59,9 @@ jobs:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
       
-      - name: Run FE Devs allocation
-        if: steps.check_fe_devs.outputs.run_rotation == 'true'
-        run: poetry run python allocate_reviewers.py
+      - name: Run Individual Developers allocation
+        if: steps.check_individual_developers.outputs.run_rotation == 'true'
+        run: poetry run python scripts/rotate_devs_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
@@ -81,7 +81,7 @@ jobs:
             echo "run_rotation=true" >> $GITHUB_OUTPUT
           else
             echo "Scheduled run - checking Teams rotation (15 days)"
-            poetry run python check_rotation_needed.py --sheet-type teams
+            poetry run python scripts/check_rotation_needed.py --sheet-type teams
             if [ $? -eq 0 ]; then
               echo "Teams rotation needed"
               echo "run_rotation=true" >> $GITHUB_OUTPUT
@@ -96,7 +96,7 @@ jobs:
       
       - name: Run Teams rotation
         if: steps.check_teams.outputs.run_rotation == 'true'
-        run: poetry run python rotate_reviewers.py
+        run: poetry run python scripts/rotate_team_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
@@ -118,7 +118,7 @@ jobs:
           echo "==================================="
           echo "ROTATION SUMMARY"
           echo "==================================="
-          echo "FE Devs: ${{ steps.check_fe_devs.outputs.run_rotation == 'true' && '✅ Completed' || '⏭️  Skipped (not needed)' }}"
+          echo "Individual Developers: ${{ steps.check_individual_developers.outputs.run_rotation == 'true' && '✅ Completed' || '⏭️  Skipped (not needed)' }}"
           echo "Teams:   ${{ steps.check_teams.outputs.run_rotation == 'true' && '✅ Completed' || '⏭️  Skipped (not needed)' }}"
           echo "==================================="
 
