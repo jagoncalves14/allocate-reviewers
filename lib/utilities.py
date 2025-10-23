@@ -63,7 +63,8 @@ def get_remote_sheet(sheet_index: int = DEVS_SHEET) -> Worksheet:
     Fetch the Worksheet data from remote Google sheet
 
     Args:
-        sheet_index: Index of the sheet (0=Config, 1=Individual Developers, 2=Teams)
+        sheet_index: Index of the sheet
+            (0=Config, 1=Individual Developers, 2=Teams)
     """
     CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
     SHEET_NAME = os.environ.get("SHEET_NAME")
