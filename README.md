@@ -70,14 +70,20 @@ This means you can update configuration directly in the Google Sheet without tou
 
 3. **Setup Google Sheet**:
    - Create a new Google Sheet
-   - Create three tabs (the code uses sheet indices, so you can name them whatever you like):
-     - **First tab (Config)**: Configuration sheet
-       - A1: "Experienced Developers", B1: "Default Number of Reviewers"
-       - A2+: List experienced developer names (one per row)
-       - B2: Enter default number (e.g., "2")
-     - **Second tab**: Individual developers (e.g., "FE Devs", "Developers", etc.)
-     - **Third tab**: Teams (e.g., "Teams", "Team Rotation", etc.)
-   - Copy the template structure from `example.xlsx`
+   - Create **at least two tabs** (Config and Individual Developers are required to exist)
+   - You can name tabs whatever you like (code uses indices):
+     - **First tab (Config)** - *Must exist, content optional*:
+       - Can be completely empty (system uses defaults)
+       - Or add configuration (recommended):
+         - A1: "Experienced Developers", B1: "Default Number of Reviewers"
+         - A2+: List experienced developer names (one per row)
+         - B2: Enter default number (e.g., "2")
+     - **Second tab (Individual Developers)** - *Required with content*:
+       - E.g., "FE Devs", "Developers", "BE Devs", etc.
+       - See template structure in `example.xlsx`
+     - **Third tab (Teams)** - *Optional*:
+       - E.g., "Teams", "Team Rotation", "Projects", etc.
+       - Only needed if you want team-based rotations
    - Share the sheet with your Service Account email
 
 4. **Setup environment**:
@@ -194,28 +200,36 @@ Two additional workflows are available for **manual execution only** (no cron):
 
 ### Google Sheet Structure
 
-Your Google Sheet should have **three sheet tabs**:
+Your Google Sheet should have **at least two sheet tabs**:
 
-**First Sheet (Config)** - Configuration
-- Column A: List of experienced developer names (one per row, starting from A2)
-- Column B2: Default number of reviewers (e.g., "2")
-- Header row (row 1): "Experienced Developers" in A1, "Default Number of Reviewers" in B1
+**First Sheet (Config)** - Configuration ✅ **Required to exist, content optional**
+- **This sheet MUST exist** (to keep indices consistent across all sheets)
+- **Content is optional** - can be completely empty, the system will use defaults
+- **Recommended structure** (if you want to customize):
+  - Header row (row 1): "Experienced Developers" in A1, "Default Number of Reviewers" in B1
+  - Column A (A2+): List of experienced developer names (one per row)
+  - Column B2: Default number of reviewers (e.g., "2")
+- **If columns are missing or empty** → Uses defaults: `reviewer_number=1`, `experienced_devs=empty`
+- **Minimum requirement**: Just create an empty sheet named "Config" (or any name)
 
-**Second Sheet (index 1)** - Individual developers
+**Second Sheet (index 1)** - Individual developers ✅ **Required**
 - Example names: "Developers", "FE Devs", "BE Devs", etc.
 - Column A: `Developer` - Developer name
 - Column B: `Number of Reviewers` - How many reviewers this developer needs
 - Column C: `Preferable Reviewers` - Comma-separated list of preferred reviewer names
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
 
-**Third Sheet (index 2)** - Team-based rotation
+**Third Sheet (index 2)** - Team-based rotation 🔵 **Optional**
 - Example names: "Teams", "Team Rotation", "Projects", etc.
 - Column A: `Team` - Team name
 - Column B: `Team Developers` - Comma-separated list of developers in this team
 - Column C: `Number of Reviewers` - How many reviewers this team needs (uses value from Config sheet if empty)
 - Column D+: Date columns with reviewer assignments (e.g., "08-10-2025")
+- **If you don't need team rotations, you can skip creating this sheet entirely**
 
 **Note:** The code uses sheet indices (0 for Config, 1 for Individual Developers, 2 for Teams) instead of sheet names, so you're free to name your tabs whatever makes sense for your team!
+
+**Graceful Failure:** If the Config sheet is empty or the Teams sheet is missing, the system will log a warning and use defaults/skip that rotation. Config and Individual Developers sheets must exist, but Teams is optional.
 
 ### How It Works
 

@@ -40,6 +40,7 @@ jobs:
       
       - name: Check if Individual Developers rotation is needed
         id: check_individual_developers
+        continue-on-error: true
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger - forcing Individual Developers rotation"
@@ -61,6 +62,7 @@ jobs:
       
       - name: Run Individual Developers allocation
         if: steps.check_individual_developers.outputs.run_rotation == 'true'
+        continue-on-error: true
         run: poetry run python scripts/rotate_devs_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json
@@ -73,6 +75,7 @@ jobs:
       
       - name: Check if Teams rotation is needed
         id: check_teams
+        continue-on-error: true
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger - forcing Teams rotation"
@@ -94,6 +97,7 @@ jobs:
       
       - name: Run Teams rotation
         if: steps.check_teams.outputs.run_rotation == 'true'
+        continue-on-error: true
         run: poetry run python scripts/rotate_team_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json

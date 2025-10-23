@@ -55,7 +55,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.utilities import (
     get_remote_sheet,
-    write_exception_to_sheet,
     load_developers_from_sheet,
     column_number_to_letter,
     update_current_team_rotation,
@@ -310,9 +309,6 @@ if __name__ == "__main__":
             print("Scheduled run - creating new rotation")
             write_reviewers_to_sheet(teams)
     except Exception as exc:  # noqa: BLE001
+        print(f"\n❌ Error during Teams rotation: {exc}")
         traceback.print_exc()
-        write_exception_to_sheet(
-            EXPECTED_HEADERS_FOR_ROTATION,
-            str(exc) or str(type(exc)),
-            sheet_index=TEAMS_SHEET,
-        )
+        raise  # Re-raise to ensure workflow fails

@@ -54,6 +54,7 @@ jobs:
       
       - name: Run team reviewer rotation
         if: steps.check_rotation.outputs.run_rotation == 'true'
+        continue-on-error: true
         run: poetry run python scripts/rotate_team_reviewers.py
         env:
           CREDENTIAL_FILE: credentials.json

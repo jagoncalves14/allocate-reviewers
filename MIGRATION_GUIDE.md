@@ -101,7 +101,12 @@ B: Default Number of Reviewers (value in B2)
 
 1. **Insert a new sheet** at the beginning
 2. Name it "Config" (or any name you prefer)
-3. Set up the structure:
+3. **Option A: Empty Config (uses defaults)**
+   - Just create an empty sheet - that's it!
+   - System will use: `reviewer_number=1`, `experienced_devs=empty`
+   
+4. **Option B: Populate Config (recommended)**
+   - Set up the structure:
 
 ```
      A                        |  B
@@ -474,6 +479,42 @@ If you need custom logic, you would need to modify `scripts/rotate_team_reviewer
 | Finance    | Joao            |                     | ... (uses default: 2)
 | Enterprise | Shanna          | 1                   | ... (1 reviewer)
 ```
+
+---
+
+### Are all three sheets required?
+
+**Two sheets must exist, one is optional:**
+
+- **Config Sheet (index 0)** - ✅ **Must exist, but content is optional**
+  - **The sheet itself MUST exist** (to keep indices consistent)
+  - **Content is completely optional** - can be blank/empty
+  - If empty or columns missing: Uses defaults (reviewer_number=1, experienced_devs=empty)
+  - If populated: Loads your custom configuration
+  - **Why required?** So Individual Developers is always at index 1, Teams at index 2
+
+- **Individual Developers (index 1)** - ✅ **Required with content**
+  - This is the main sheet for developer rotations
+  - Must have proper structure and content
+  - Without this, the rotation won't work
+
+- **Teams Sheet (index 2)** - 🔵 **Optional (can be omitted entirely)**
+  - If missing: Teams rotation is skipped silently
+  - If present: Teams rotation runs normally
+  - **Perfect for gradual adoption!**
+
+**Minimum Setup:**
+1. **Create Config sheet** (first tab) - Can be completely empty
+2. **Create Individual Developers sheet** (second tab) - Must have content
+3. *(Optional)* **Create Teams sheet** (third tab) - Only if you need it
+
+**Example of minimal Config sheet:**
+```
+Just create an empty sheet tab named "Config" - that's it!
+No headers, no data needed. System will use defaults.
+```
+
+The system gracefully handles empty Config sheets and missing Teams sheets.
 
 ---
 

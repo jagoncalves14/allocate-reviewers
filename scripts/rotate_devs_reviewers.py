@@ -67,7 +67,6 @@ from lib.env_constants import (
 )
 from lib.utilities import (
     load_developers_from_sheet,
-    write_exception_to_sheet,
     get_remote_sheet,
     update_current_sprint_reviewers,
     column_number_to_letter,
@@ -274,7 +273,6 @@ if __name__ == "__main__":
             print("Scheduled run: Creating new sprint column")
             write_reviewers_to_sheet(developers)
     except Exception as exc:
+        print(f"\n❌ Error during Individual Developers rotation: {exc}")
         traceback.print_exc()
-        write_exception_to_sheet(
-            EXPECTED_HEADERS_FOR_ALLOCATION, str(exc) or str(type(exc))
-        )
+        raise  # Re-raise to ensure workflow fails
