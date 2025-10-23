@@ -1,11 +1,12 @@
 """
 Allocate and Rotate Reviewers
 
-FE DEVS ALLOCATION (allocate_reviewers.py):
+INDIVIDUAL DEVELOPERS (allocate_reviewers.py):
 - Randomly assigns experienced developers as reviewers to individual developers
 - Each developer gets a specified number of reviewers
 - At least one reviewer must be an experienced developer
 - Runs every 15 days or manually
+- Uses FIRST sheet (index 0)
 
 TEAMS ROTATION (this file - rotate_reviewers.py):
 - Assigns reviewers to teams based on team composition
@@ -42,6 +43,8 @@ Examples:
 
 Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
 or manually via GitHub Actions.
+
+NOTE: Uses the SECOND sheet/tab in the Google Sheet (index 1)
 """
 
 import traceback
@@ -174,7 +177,7 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    with get_remote_sheet("Teams") as sheet:
+    with get_remote_sheet(1) as sheet:  # Second sheet (index 1)
         records = sheet.get_all_records(
             expected_headers=EXPECTED_HEADERS_FOR_ROTATION
         )
@@ -302,5 +305,5 @@ if __name__ == "__main__":
         write_exception_to_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
             str(exc) or str(type(exc)),
-            tab_name="Teams",
+            sheet_index=1,  # Second sheet
         )
