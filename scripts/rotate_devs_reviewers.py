@@ -69,8 +69,10 @@ Allocation Process:
 Result: Dev2 → reviewed by Dev3, Dev1
 
 SCHEDULE:
-- Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
-- Can be triggered manually via GitHub Actions
+- Called automatically by "Run All Review Rotations" workflow every Wednesday
+  at 5:00 AM Finland Time (3:00 AM UTC)
+- Only executes if 15 days have passed since last rotation
+- Can also be triggered manually via "Run Developers Review Rotation" workflow
 - Manual runs update existing column, scheduled runs create new column
 
 NOTE: Uses the FIRST sheet/tab in the Google Sheet (index 0)

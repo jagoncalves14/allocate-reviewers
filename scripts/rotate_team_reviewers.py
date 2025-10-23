@@ -38,8 +38,11 @@ Examples:
 - Team needs 3 reviewers, has 5 members → 3 members from team
   (least assigned)
 
-Runs every 15 days on Wednesdays at 5:00 AM Finland Time (3:00 AM UTC)
-or manually via GitHub Actions.
+SCHEDULE:
+- Called automatically by "Run All Review Rotations" workflow every Wednesday
+  at 5:00 AM Finland Time (3:00 AM UTC)
+- Only executes if 15 days have passed since last rotation
+- Can also be triggered manually via "Run Teams Review Rotation" workflow
 
 NOTE: Uses the SECOND sheet/tab in the Google Sheet (index 1)
 """
