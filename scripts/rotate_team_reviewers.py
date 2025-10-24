@@ -208,6 +208,15 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
 
 
 def write_reviewers_to_sheet(teams: List[Developer]) -> None:
+    """
+    Write team reviewer assignments to a new column in the Google Sheet.
+
+    Creates a new column with today's date as header and writes all
+    team reviewer assignments. Also applies formatting and resizing.
+
+    Args:
+        teams: List of teams with assigned reviewers
+    """
     # For Teams, we don't use the Indexes column anymore
     # Just insert the reviewers column after "Number of Reviewers"
     column_index = len(EXPECTED_HEADERS_FOR_ROTATION) + 1

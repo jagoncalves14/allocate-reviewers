@@ -112,6 +112,13 @@ def get_last_rotation_date(
 
 
 def main() -> None:
+    """
+    Main entry point to check if rotation is needed based on date threshold.
+
+    Reads the last rotation date from the Google Sheet and exits with:
+    - Exit code 0: Rotation is needed (15+ days passed)
+    - Exit code 1: Rotation not needed or error occurred
+    """
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description="Check if rotation is needed (15+ days)"

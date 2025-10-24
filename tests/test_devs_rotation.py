@@ -30,6 +30,7 @@ def test_shuffle_and_get_the_most_available_names(
     expected: List[str],
     mocked_devs: List[Developer],
 ) -> None:
+    """Test shuffle_and_get_the_most_available_names balances load."""
     DEV_REVIEW_LIST_MAPPER = {
         "B": set(("C", "D")),
         "C": set(("A", "B")),

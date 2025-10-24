@@ -26,10 +26,15 @@ from tests.conftest import SHEET
 from tests.utils import mutate_devs
 
 
-@patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"})
+@patch.dict(
+    os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"}
+)
 @patch("lib.utilities.ServiceAccountCredentials")
 @patch("lib.utilities.gspread")
-def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) -> None:
+def test_get_remote_sheet(
+    mocked_gspread: Mock, mocked_service_account: Mock
+) -> None:
+    """Test that get_remote_sheet initializes and returns a worksheet."""
     mocked_credential = Mock(spec=ServiceAccountCredentials)
     mocked_service_account.from_json_keyfile_name.return_value = (
         mocked_credential
@@ -63,6 +68,7 @@ def test_load_developers_from_sheet(
     mocked_devs: List[Developer],
     headers: List[str],
 ) -> None:
+    """Test that load_developers_from_sheet correctly parses sheet data."""
     devs = load_developers_from_sheet(headers)
     assert len(devs) == 5
     for idx, dev in enumerate(devs):
@@ -73,7 +79,10 @@ def test_load_developers_from_sheet(
 def test_write_reviewers_to_sheet(
     mocked_devs: List[Developer],
 ) -> None:
-    with patch("scripts.rotate_devs_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
+    """Test write_reviewers_to_sheet inserts a new column correctly."""
+    with patch(
+        "scripts.rotate_devs_reviewers.get_remote_sheet"
+    ) as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             DEV_REVIEWERS_MAPPER = {
                 "B": set(("C", "D")),
@@ -88,7 +97,7 @@ def test_write_reviewers_to_sheet(
 
 
 def test_format_and_resize_columns_batch_update() -> None:
-    """Test that format_and_resize_columns batches all operations into single API call."""
+    """Test format_and_resize_columns batches all operations into one call."""
     mocked_sheet = Mock(spec=Worksheet)
     mocked_sheet.id = 123
     mocked_sheet.col_count = 5
@@ -115,27 +124,40 @@ def test_format_and_resize_columns_batch_update() -> None:
     assert len(requests) == 6
 
     # Verify current column header format (light blue, bold)
-    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
-        "red": 0.85, "green": 0.92, "blue": 1
-    }
-    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is True
+    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"][
+        "backgroundColor"
+    ] == {"red": 0.85, "green": 0.92, "blue": 1}
+    assert (
+        requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"][
+            "bold"
+        ]
+        is True
+    )
 
     # Verify old column header format (grey, not bold)
-    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
-        "red": 1, "green": 1, "blue": 1
-    }
-    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is False
-    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["foregroundColor"] == {
-        "red": 0.8, "green": 0.8, "blue": 0.8
-    }
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"][
+        "backgroundColor"
+    ] == {"red": 1, "green": 1, "blue": 1}
+    assert (
+        requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"][
+            "bold"
+        ]
+        is False
+    )
+    old_foreground = requests[2]["repeatCell"]["cell"]["userEnteredFormat"][
+        "textFormat"
+    ]["foregroundColor"]
+    assert old_foreground == {"red": 0.8, "green": 0.8, "blue": 0.8}
 
     # Verify current column resize (280px)
-    assert requests[4]["updateDimensionProperties"]["properties"]["pixelSize"] == 280
+    resize_props = requests[4]["updateDimensionProperties"]["properties"]
+    assert resize_props["pixelSize"] == 280
     assert requests[4]["updateDimensionProperties"]["range"]["startIndex"] == 3
     assert requests[4]["updateDimensionProperties"]["range"]["endIndex"] == 4
 
     # Verify old column resize (132px)
-    assert requests[5]["updateDimensionProperties"]["properties"]["pixelSize"] == 132
+    old_resize_props = requests[5]["updateDimensionProperties"]["properties"]
+    assert old_resize_props["pixelSize"] == 132
     assert requests[5]["updateDimensionProperties"]["range"]["startIndex"] == 4
     assert requests[5]["updateDimensionProperties"]["range"]["endIndex"] == 5
 
@@ -168,11 +190,23 @@ def test_format_and_resize_columns_no_old_columns() -> None:
 def test_update_current_sprint_reviewers_batch_update(
     mocked_devs: List[Developer],
 ) -> None:
-    """Test that update_current_sprint_reviewers uses batch update for all cells."""
-    with patch("lib.utilities.get_remote_sheet") as mocked_get_remote_sheet:
+    """
+    Test update_current_sprint_reviewers uses batch update for all cells.
+
+    Verifies NO individual update_cell() calls are made and that
+    a single sheet.update() call is used instead for efficiency.
+    """
+    with patch(
+        "lib.utilities.get_remote_sheet"
+    ) as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             # Setup
-            mocked_sheet.row_values.return_value = ["Developer", "Number", "Preferable", "10-10-2022"]
+            mocked_sheet.row_values.return_value = [
+                "Developer",
+                "Number",
+                "Preferable",
+                "10-10-2022",
+            ]
             mocked_sheet.get_all_records.return_value = SHEET
             mocked_sheet.id = 456
             mocked_sheet.col_count = 5

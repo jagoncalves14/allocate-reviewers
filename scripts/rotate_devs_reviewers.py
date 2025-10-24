@@ -108,6 +108,17 @@ load_dotenv(find_dotenv())
 def shuffle_and_get_the_most_available_names(
     available_names: Set[str], number_of_names: int, devs
 ) -> List[str]:
+    """
+    Select reviewers with load balancing - prioritize least assigned.
+
+    Args:
+        available_names: Set of available reviewer names
+        number_of_names: Number of reviewers to select
+        devs: List of all developers (to check current assignments)
+
+    Returns:
+        List of selected reviewer names (load-balanced and shuffled)
+    """
     if number_of_names == 0:
         return []
     names = list(available_names)
@@ -283,6 +294,15 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
 
 def write_reviewers_to_sheet(devs: List[Developer]) -> None:
+    """
+    Write reviewer assignments to a new column in the Google Sheet.
+
+    Creates a new column with today's date as header and writes all
+    reviewer assignments. Also applies formatting and resizing.
+
+    Args:
+        devs: List of developers with assigned reviewers
+    """
     column_index = len(EXPECTED_HEADERS_FOR_ALLOCATION) + 1
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]

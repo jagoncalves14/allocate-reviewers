@@ -269,6 +269,12 @@ def run_teams_rotation_for_sheet(
 
 
 def main() -> None:
+    """
+    Main entry point for running rotations across multiple Google Sheets.
+
+    Supports running individual developer rotations, team rotations, or both
+    across one or more Google Sheets defined in SHEET_NAMES env variable.
+    """
     parser = argparse.ArgumentParser(
         description="Run rotations across multiple Google Sheets"
     )
