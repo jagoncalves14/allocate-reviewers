@@ -10,7 +10,7 @@ on:
         description: 'Manual run (updates existing column instead of creating new)'
         required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   all-review-rotations:
