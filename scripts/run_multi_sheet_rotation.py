@@ -23,7 +23,7 @@ Exit Codes:
     1: Partial failure (some sheets failed)
     2: Total failure (all sheets failed or no sheets configured)
 """
-import os
+
 import sys
 import argparse
 import traceback
@@ -74,9 +74,7 @@ def run_devs_rotation_for_sheet(
             from lib import env_constants
 
             # Load configuration from this sheet's Config tab
-            default_reviewer_number, exp_dev_names = (
-                load_config_from_sheet(sheet_name)
-            )
+            default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)
             env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
             env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
 
@@ -99,16 +97,7 @@ def run_devs_rotation_for_sheet(
                 )
             else:
                 print("Scheduled run: Creating new sprint column")
-                # Temporarily set SHEET_NAME for write_reviewers_to_sheet
-                original_sheet_name = os.environ.get("SHEET_NAME")
-                os.environ["SHEET_NAME"] = sheet_name
-                try:
-                    write_reviewers_to_sheet(developers)
-                finally:
-                    if original_sheet_name:
-                        os.environ["SHEET_NAME"] = original_sheet_name
-                    else:
-                        os.environ.pop("SHEET_NAME", None)
+                write_reviewers_to_sheet(developers, sheet_name=sheet_name)
 
             print(f"✅ Successfully processed: {sheet_name}\n")
             return True
@@ -179,9 +168,7 @@ def run_teams_rotation_for_sheet(
             from lib import env_constants
 
             # Load configuration from this sheet's Config tab
-            default_reviewer_number, exp_dev_names = (
-                load_config_from_sheet(sheet_name)
-            )
+            default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)
             env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
             env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
 
@@ -191,16 +178,17 @@ def run_teams_rotation_for_sheet(
                 values_mapper=lambda record: Developer(
                     name=record[TEAM_HEADER],
                     reviewer_number=int(
-                        record[TEAM_REVIEWER_NUMBER_HEADER]
-                        or default_reviewer_number
+                        record[TEAM_REVIEWER_NUMBER_HEADER] or default_reviewer_number
                     ),
-                    preferable_reviewer_names=set(
-                        name.strip()
-                        for name in record[TEAM_DEVELOPERS_HEADER].split(",")
-                        if name.strip()
-                    )
-                    if record[TEAM_DEVELOPERS_HEADER]
-                    else set(),
+                    preferable_reviewer_names=(
+                        set(
+                            name.strip()
+                            for name in record[TEAM_DEVELOPERS_HEADER].split(",")
+                            if name.strip()
+                        )
+                        if record[TEAM_DEVELOPERS_HEADER]
+                        else set()
+                    ),
                 ),
                 sheet_index=2,  # Teams sheet
                 sheet_name=sheet_name,
@@ -219,16 +207,7 @@ def run_teams_rotation_for_sheet(
                 )
             else:
                 print("Scheduled run: Creating new rotation column")
-                # Temporarily set SHEET_NAME for write_team_reviewers_to_sheet
-                original_sheet_name = os.environ.get("SHEET_NAME")
-                os.environ["SHEET_NAME"] = sheet_name
-                try:
-                    write_team_reviewers_to_sheet(teams)
-                finally:
-                    if original_sheet_name:
-                        os.environ["SHEET_NAME"] = original_sheet_name
-                    else:
-                        os.environ.pop("SHEET_NAME", None)
+                write_team_reviewers_to_sheet(teams, sheet_name=sheet_name)
 
             print(f"✅ Successfully processed: {sheet_name}\n")
             return True

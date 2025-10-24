@@ -106,7 +106,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     experienced_devs = list(EXPERIENCED_DEV_NAMES)
     if not experienced_devs:
         raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
-    
+
     print(f"\n📊 Team Rotation Summary:")
     print(f"   Teams to process: {len(teams)}")
     print(f"   Experienced developers pool: {len(experienced_devs)}")
@@ -138,7 +138,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
         team_members = list(team.preferable_reviewer_names)
         num_members = len(team_members)
         num_reviewers = team.reviewer_number
-        
+
         print(f"🔄 Processing Team: {team.name}")
         print(f"   Team members: {team_members if team_members else '(none)'}")
         print(f"   Needs: {num_reviewers} reviewers")
@@ -150,25 +150,21 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
             team.reviewer_names.update(selected)
             # Track assignments
             for dev_name in selected:
-                assignment_count[dev_name] = (
-                    assignment_count.get(dev_name, 0) + 1
-                )
+                assignment_count[dev_name] = assignment_count.get(dev_name, 0) + 1
             print(f"   ✅ Assigned: {sorted(selected)}")
 
         elif num_members < num_reviewers:
             # Fewer members than needed → use all + fill with experienced devs
-            print(f"   Strategy: Team has {num_members} members, needs {num_reviewers} → using all members + experienced devs")
+            print(
+                f"   Strategy: Team has {num_members} members, needs {num_reviewers} → using all members + experienced devs"
+            )
             team.reviewer_names.update(team_members)
             # Track team member assignments
             for dev_name in team_members:
-                assignment_count[dev_name] = (
-                    assignment_count.get(dev_name, 0) + 1
-                )
+                assignment_count[dev_name] = assignment_count.get(dev_name, 0) + 1
 
             # Get experienced devs not in this team
-            eligible = [
-                dev for dev in experienced_devs if dev not in team_members
-            ]
+            eligible = [dev for dev in experienced_devs if dev not in team_members]
 
             # Fill remaining slots with balanced selection
             remaining_slots = num_reviewers - num_members
@@ -177,27 +173,25 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
                 team.reviewer_names.update(selected)
                 # Track assignments
                 for dev_name in selected:
-                    assignment_count[dev_name] = (
-                        assignment_count.get(dev_name, 0) + 1
-                    )
+                    assignment_count[dev_name] = assignment_count.get(dev_name, 0) + 1
                 print(f"   ✅ Assigned: {sorted(team_members)} + {sorted(selected)}")
             else:
                 print(f"   ✅ Assigned: {sorted(team_members)}")
 
         else:
             # Enough members → select balanced from team
-            print(f"   Strategy: Team has {num_members} members, needs {num_reviewers} → selecting from team")
+            print(
+                f"   Strategy: Team has {num_members} members, needs {num_reviewers} → selecting from team"
+            )
             selected = select_balanced(team_members, num_reviewers)
             team.reviewer_names.update(selected)
             # Track assignments
             for dev_name in selected:
-                assignment_count[dev_name] = (
-                    assignment_count.get(dev_name, 0) + 1
-                )
+                assignment_count[dev_name] = assignment_count.get(dev_name, 0) + 1
             print(f"   ✅ Assigned: {sorted(selected)}")
-        
+
         print()
-    
+
     # Show load balancing summary
     if assignment_count:
         print(f"📊 Load Balancing Summary:")
@@ -207,7 +201,9 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
         print()
 
 
-def write_reviewers_to_sheet(teams: List[Developer]) -> None:
+def write_reviewers_to_sheet(
+    teams: List[Developer], sheet_name: str | None = None
+) -> None:
     """
     Write team reviewer assignments to a new column in the Google Sheet.
 
@@ -216,6 +212,8 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
 
     Args:
         teams: List of teams with assigned reviewers
+        sheet_name: Name of the Google Sheet file to write to.
+            If None, uses first sheet from SHEET_NAMES environment variable.
     """
     # For Teams, we don't use the Indexes column anymore
     # Just insert the reviewers column after "Number of Reviewers"
@@ -223,14 +221,21 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    with get_remote_sheet(TEAMS_SHEET) as sheet:
-        records = sheet.get_all_records(
-            expected_headers=EXPECTED_HEADERS_FOR_ROTATION
-        )
+    with get_remote_sheet(TEAMS_SHEET, sheet_name=sheet_name) as sheet:
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS_FOR_ROTATION)
         for record in records:
-            team = next(t for t in teams if t.name == record[TEAM_HEADER])
-            reviewer_names = ", ".join(sorted(team.reviewer_names))
-            new_column.append(reviewer_names)
+            team = next((t for t in teams if t.name == record[TEAM_HEADER]), None)
+            if team is None:
+                # Team in sheet but not processed (removed from config?)
+                team_name = record[TEAM_HEADER]
+                print(
+                    f"   ⚠️  WARNING: Team '{team_name}' in sheet "
+                    f"but not in processed list - skipping"
+                )
+                new_column.append("")
+            else:
+                reviewer_names = ", ".join(sorted(team.reviewer_names))
+                new_column.append(reviewer_names)
 
         sheet.insert_cols([new_column], column_index)
 
@@ -246,18 +251,17 @@ if __name__ == "__main__":
         # Load configuration from Config sheet
         from lib.config_loader import load_config_from_sheet
         from lib import env_constants
-        
+
         default_reviewer_number, experienced_dev_names = load_config_from_sheet()
         env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
         env_constants.EXPERIENCED_DEV_NAMES = experienced_dev_names
-        
+
         teams = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
             values_mapper=lambda record: Developer(
                 name=record[TEAM_HEADER],
                 reviewer_number=int(
-                    record[TEAM_REVIEWER_NUMBER_HEADER]
-                    or DEFAULT_REVIEWER_NUMBER
+                    record[TEAM_REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
                 ),
                 # Store team developers in preferable_reviewer_names field
                 preferable_reviewer_names=parse_team_developers(

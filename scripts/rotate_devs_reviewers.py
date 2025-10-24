@@ -129,9 +129,7 @@ def shuffle_and_get_the_most_available_names(
     random.shuffle(names)
     # To select names that have the least assigned times.
     names.sort(
-        key=lambda name: len(
-            next(dev for dev in devs if dev.name == name).review_for
-        ),
+        key=lambda name: len(next(dev for dev in devs if dev.name == name).review_for),
     )
 
     return names[0:number_of_names]
@@ -144,29 +142,29 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     """
     # pylint: next-line: disable=import-outside-toplevel
     from lib.env_constants import EXPERIENCED_DEV_NAMES
-    
+
     experienced_dev_names = set(EXPERIENCED_DEV_NAMES)
 
     all_dev_names = set((dev.name for dev in devs))
     valid_experienced_dev_names = set(
         (name for name in experienced_dev_names if name in all_dev_names)
     )
-    
+
     non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
-    
+
     print(f"\n📊 Developer Classification:")
     print(f"   Names in FE Developers sheet: {sorted(all_dev_names)}")
     print(f"   Names from EXPERIENCED_DEV_NAMES env: {sorted(experienced_dev_names)}")
     print(f"   ✅ 👷 Matched (Experienced): {sorted(valid_experienced_dev_names)}")
     print(f"   ✅ 👨‍🎓 Non-experienced: {sorted(non_experienced_dev_names)}")
-    
+
     # Show mismatches
     unmatched_from_config = experienced_dev_names - all_dev_names
     if unmatched_from_config:
         print(f"\n⚠️  WARNING: These names from Config don't match any developer:")
         for name in sorted(unmatched_from_config):
             print(f"      '{name}' (length: {len(name)}, repr: {repr(name)})")
-    
+
     print(f"   Total: {len(all_dev_names)} developers\n")
 
     # To process devs with preferable_reviewer_names first.
@@ -176,10 +174,12 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         chosen_reviewer_names: Set[str] = set()
         reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
         is_experienced_dev = dev.name in valid_experienced_dev_names
-        
+
         exp_label = "👷 Experienced" if is_experienced_dev else "👨‍🎓 Non-experienced"
-        print(f"🔄 Processing {dev.name} ({exp_label}, needs {reviewer_number} reviewers)")
-        
+        print(
+            f"🔄 Processing {dev.name} ({exp_label}, needs {reviewer_number} reviewers)"
+        )
+
         # Track non-experienced devs for filtering
         current_non_experienced = all_dev_names - valid_experienced_dev_names
 
@@ -189,8 +189,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         def experienced_reviewer_number_getter() -> int:
             # Check if we already have an experienced reviewer
             has_experienced = any(
-                name in valid_experienced_dev_names
-                for name in chosen_reviewer_names
+                name in valid_experienced_dev_names for name in chosen_reviewer_names
             )
             if has_experienced:
                 return 0
@@ -209,8 +208,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
 
             # Count how many non-experienced reviewers already assigned
             non_experienced_count = sum(
-                1 for name in chosen_reviewer_names
-                if name in current_non_experienced
+                1 for name in chosen_reviewer_names if name in current_non_experienced
             )
 
             # Check if we have remaining slots
@@ -228,7 +226,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
             if not is_experienced_dev
             else dev.preferable_reviewer_names
         )
-        
+
         if not is_experienced_dev and dev.preferable_reviewer_names:
             filtered_out = dev.preferable_reviewer_names - valid_experienced_dev_names
             if filtered_out:
@@ -275,14 +273,16 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         for reviewer in reviewers:
             dev.reviewer_names.add(reviewer.name)
             reviewer.review_for.add(dev.name)
-        
+
         # Verify assignment correctness
         assigned_experienced = chosen_reviewer_names & valid_experienced_dev_names
         assigned_non_experienced = chosen_reviewer_names & non_experienced_dev_names
-        
+
         print(f"   ✅ Assigned: {sorted(chosen_reviewer_names)}")
-        print(f"      (Exp: {len(assigned_experienced)}, Non-exp: {len(assigned_non_experienced)})")
-        
+        print(
+            f"      (Exp: {len(assigned_experienced)}, Non-exp: {len(assigned_non_experienced)})"
+        )
+
         # Validation warnings
         if not is_experienced_dev and assigned_non_experienced:
             print(f"   ⚠️  WARNING: Non-experienced dev has non-experienced reviewers!")
@@ -293,7 +293,9 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         print()
 
 
-def write_reviewers_to_sheet(devs: List[Developer]) -> None:
+def write_reviewers_to_sheet(
+    devs: List[Developer], sheet_name: str | None = None
+) -> None:
     """
     Write reviewer assignments to a new column in the Google Sheet.
 
@@ -302,28 +304,31 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
 
     Args:
         devs: List of developers with assigned reviewers
+        sheet_name: Name of the Google Sheet file to write to.
+            If None, uses first sheet from SHEET_NAMES environment variable.
     """
     column_index = len(EXPECTED_HEADERS_FOR_ALLOCATION) + 1
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    with get_remote_sheet() as sheet:
+    with get_remote_sheet(sheet_name=sheet_name) as sheet:
         records = sheet.get_all_records(
             expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION
         )
         for record in records:
             developer = next(
-                (dev for dev in devs if dev.name == record["Developer"]),
-                None
+                (dev for dev in devs if dev.name == record["Developer"]), None
             )
             if developer is None:
-                # Developer exists in sheet but wasn't processed (maybe removed from config)
-                print(f"   ⚠️  WARNING: Developer '{record['Developer']}' in sheet but not in processed list - skipping")
+                # Developer in sheet but not processed (removed from config?)
+                dev_name = record["Developer"]
+                print(
+                    f"   ⚠️  WARNING: Developer '{dev_name}' in sheet "
+                    f"but not in processed list - skipping"
+                )
                 new_column.append("")
             else:
-                reviewer_names = ", ".join(
-                    sorted(developer.reviewer_names)
-                )
+                reviewer_names = ", ".join(sorted(developer.reviewer_names))
                 new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
 
@@ -338,24 +343,18 @@ if __name__ == "__main__":
         from lib.config_loader import load_config_from_sheet
         from lib import env_constants
 
-        default_reviewer_number, exp_dev_names = (
-            load_config_from_sheet()
-        )
+        default_reviewer_number, exp_dev_names = load_config_from_sheet()
         env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
         env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
 
-        developers = load_developers_from_sheet(
-            EXPECTED_HEADERS_FOR_ALLOCATION
-        )
+        developers = load_developers_from_sheet(EXPECTED_HEADERS_FOR_ALLOCATION)
         allocate_reviewers(developers)
 
         # Manual runs update existing column, scheduled runs create new column
         is_manual = os.environ.get("MANUAL_RUN", "").lower() == "true"
         if is_manual:
             print("Manual run: Updating current sprint column")
-            update_current_sprint_reviewers(
-                EXPECTED_HEADERS_FOR_ALLOCATION, developers
-            )
+            update_current_sprint_reviewers(EXPECTED_HEADERS_FOR_ALLOCATION, developers)
         else:
             print("Scheduled run: Creating new sprint column")
             write_reviewers_to_sheet(developers)
