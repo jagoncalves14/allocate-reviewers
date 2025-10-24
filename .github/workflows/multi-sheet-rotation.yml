@@ -1,4 +1,4 @@
-name: Run All Review Rotations
+name: Multi-Sheet Review Rotation
 
 on:
   schedule:
@@ -6,6 +6,15 @@ on:
     - cron: '0 3 * * 3'
   workflow_dispatch:
     inputs:
+      rotation_type:
+        description: 'Type of rotation to run'
+        required: true
+        type: choice
+        options:
+          - all
+          - devs
+          - teams
+        default: 'all'
       manual_run:
         description: 'Manual run (updates existing column instead of creating new)'
         required: false
@@ -13,7 +22,7 @@ on:
         default: false
 
 jobs:
-  all-review-rotations:
+  multi-sheet-rotation:
     runs-on: ubuntu-latest
     
     steps:
@@ -37,41 +46,41 @@ jobs:
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
       
-      - name: Run All Rotations (All Sheets, All Types)
+      - name: Run Multi-Sheet Rotation
         env:
           CREDENTIAL_FILE: credentials.json
+          # Use Variables (not Secrets) for non-sensitive config
           SHEET_NAMES: ${{ vars.SHEET_NAMES }}
+          # Fallback to single sheet if SHEET_NAMES not set
+          SHEET_NAME: ${{ vars.SHEET_NAME }}
         run: |
+          # Determine rotation type and manual flag
+          ROTATION_TYPE="${{ github.event.inputs.rotation_type || 'all' }}"
           MANUAL_FLAG=""
           
           if [ "${{ github.event.inputs.manual_run }}" = "true" ]; then
             MANUAL_FLAG="--manual"
-            echo "🔧 Manual run mode: Will update existing columns"
-          else
-            echo "📅 Scheduled run mode: Will create new columns"
           fi
           
           # Check if SHEET_NAMES is configured
-          if [ -z "$SHEET_NAMES" ]; then
-            echo "❌ Error: SHEET_NAMES variable is not configured!"
+          if [ -z "$SHEET_NAMES" ] && [ -z "$SHEET_NAME" ]; then
+            echo "❌ Error: Neither SHEET_NAMES nor SHEET_NAME variable is configured!"
             echo "   Please set up Variables in Settings → Secrets and variables → Actions → Variables"
             exit 1
           fi
           
           # Display configuration (for debugging)
-          echo "📋 Processing sheets:"
-          echo "$SHEET_NAMES" | while read -r line; do
-            [ -n "$line" ] && echo "   - $line"
-          done
+          if [ -n "$SHEET_NAMES" ]; then
+            echo "📋 Processing multiple sheets:"
+            echo "$SHEET_NAMES" | while read -r line; do
+              [ -n "$line" ] && echo "   - $line"
+            done
+          else
+            echo "📋 Processing single sheet: $SHEET_NAME"
+          fi
           
-          echo ""
-          echo "🚀 Running rotations for:"
-          echo "   - Individual Developers (all sheets)"
-          echo "   - Teams (all sheets)"
-          echo ""
-          
-          # Run the multi-sheet rotation (processes ALL sheets, ALL types)
-          poetry run python scripts/run_multi_sheet_rotation.py --type all $MANUAL_FLAG
+          # Run the rotation
+          poetry run python scripts/run_multi_sheet_rotation.py --type "$ROTATION_TYPE" $MANUAL_FLAG
       
       - name: Clean up credentials
         if: always()
@@ -81,8 +90,9 @@ jobs:
         if: always()
         run: |
           if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ All rotations completed successfully!"
+            echo "✅ Multi-sheet rotation completed successfully!"
           else
-            echo "❌ Some rotations failed - check logs above"
+            echo "❌ Multi-sheet rotation failed!"
             exit 1
           fi
+

@@ -45,8 +45,9 @@ def load_developers_from_sheet(
         else set(),
     ),
     sheet_index: int = DEVS_SHEET,
+    sheet_name: str | None = None,
 ) -> List[Developer]:
-    with get_remote_sheet(sheet_index) as sheet:
+    with get_remote_sheet(sheet_index, sheet_name) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
 
     input_developers = map(
@@ -58,22 +59,39 @@ def load_developers_from_sheet(
 
 
 @contextmanager
-def get_remote_sheet(sheet_index: int = DEVS_SHEET) -> Worksheet:
+def get_remote_sheet(
+    sheet_index: int = DEVS_SHEET, sheet_name: str | None = None
+) -> Worksheet:
     """
     Fetch the Worksheet data from remote Google sheet
 
     Args:
-        sheet_index: Index of the sheet
+        sheet_index: Index of the sheet tab
             (0=Config, 1=Individual Developers, 2=Teams)
+        sheet_name: Name of the Google Sheet file to open.
+            If None, uses first sheet from SHEET_NAMES environment variable.
+            For multi-sheet support, pass the specific sheet name.
     """
     CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
-    SHEET_NAME = os.environ.get("SHEET_NAME")
+
+    # Use provided sheet_name or fall back to first sheet in SHEET_NAMES
+    if sheet_name is None:
+        from lib.env_constants import get_sheet_names
+        sheets = get_sheet_names()
+        if sheets:
+            sheet_name = sheets[0]
+
+    if not sheet_name:
+        raise ValueError(
+            "Sheet name must be provided either as parameter or "
+            "via SHEET_NAMES environment variable"
+        )
 
     credential = ServiceAccountCredentials.from_json_keyfile_name(
         CREDENTIAL_FILE, DRIVE_SCOPE
     )
     client = gspread.authorize(credential)
-    spreadsheet = client.open(SHEET_NAME)
+    spreadsheet = client.open(sheet_name)
     # Get sheet by index (0-based)
     sheet = spreadsheet.get_worksheet(sheet_index)
     yield sheet
@@ -84,11 +102,12 @@ def write_exception_to_sheet(
     expected_headers: List[str],
     error: str,
     sheet_index: int = DEVS_SHEET,
+    sheet_name: str | None = None,
 ) -> None:
     column_index = len(expected_headers) + 1
     new_column = [f"Exception {datetime.now().strftime('%d-%m-%Y')}", error]
 
-    with get_remote_sheet(sheet_index) as sheet:
+    with get_remote_sheet(sheet_index, sheet_name) as sheet:
         sheet.insert_cols([new_column], column_index)
 
 
@@ -96,11 +115,12 @@ def update_current_sprint_reviewers(
     expected_headers: List[str],
     devs: List[Developer],
     sheet_index: int = DEVS_SHEET,
+    sheet_name: str | None = None,
 ) -> None:
     """Update reviewers in the current sprint column (for manual runs)"""
     column_index = len(expected_headers) + 1
 
-    with get_remote_sheet(sheet_index) as sheet:
+    with get_remote_sheet(sheet_index, sheet_name) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (
@@ -236,6 +256,7 @@ def update_current_sprint_reviewers(
 def update_current_team_rotation(
     expected_headers: List[str],
     teams: List[Developer],
+    sheet_name: str | None = None,
 ) -> None:
     """
     Update reviewers in the current rotation column (manual runs, 2nd sheet)
@@ -246,7 +267,7 @@ def update_current_team_rotation(
 
     from lib.env_constants import TEAMS_SHEET
 
-    with get_remote_sheet(TEAMS_SHEET) as sheet:
+    with get_remote_sheet(TEAMS_SHEET, sheet_name) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (

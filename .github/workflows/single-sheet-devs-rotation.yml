@@ -1,0 +1,79 @@
+name: Single Sheet - Developers Rotation
+
+# Run rotation for a SPECIFIC sheet (manual trigger only)
+# Use "Run All Review Rotations" workflow to process all sheets automatically
+
+on:
+  workflow_dispatch:
+    inputs:
+      sheet_name:
+        description: 'Sheet name (e.g., "Front End - Code Reviewers")'
+        required: true
+        type: string
+      manual_run:
+        description: 'Manual run (updates existing column instead of creating new)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  single-sheet-devs-rotation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: poetry install
+      
+      - name: Create credentials file
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+      
+      - name: Run Developers Rotation for Specific Sheet
+        env:
+          CREDENTIAL_FILE: credentials.json
+          # Use the sheet name from the input prompt
+          SHEET_NAME: ${{ github.event.inputs.sheet_name }}
+        run: |
+          MANUAL_FLAG=""
+          
+          if [ "${{ github.event.inputs.manual_run }}" = "true" ]; then
+            MANUAL_FLAG="--manual"
+            echo "🔧 Manual run mode: Will update existing column"
+          else
+            echo "📅 Scheduled run mode: Will create new column"
+          fi
+          
+          echo "📋 Processing single sheet: ${{ github.event.inputs.sheet_name }}"
+          echo "🔄 Rotation type: Individual Developers only"
+          echo ""
+          
+          # Run rotation for the specific sheet (devs only)
+          export SHEET_NAMES="${{ github.event.inputs.sheet_name }}"
+          poetry run python scripts/run_multi_sheet_rotation.py --type devs $MANUAL_FLAG
+      
+      - name: Clean up credentials
+        if: always()
+        run: rm -f credentials.json
+      
+      - name: Report Status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Developers rotation completed for: ${{ github.event.inputs.sheet_name }}"
+          else
+            echo "❌ Developers rotation failed for: ${{ github.event.inputs.sheet_name }}"
+            exit 1
+          fi

@@ -20,6 +20,53 @@ This guide covers **ALL changes** from the original version to the current versi
 4. **Better UX:** Edit configuration alongside the data it affects
 5. **Reduced Complexity:** Fewer GitHub Secrets to manage
 
+## 🆕 What's Changing: From 5 Secrets → 1 Secret + 1 Variable
+
+### **The Big Change**
+
+**Before (Old System):**
+- 5 GitHub Secrets to manage
+- Configuration hidden in GitHub settings
+- Hard to update, requires GitHub access
+
+**After (New System):**
+- 1 GitHub Secret (credentials only)
+- 1 GitHub Variable (sheet name - visible and editable)
+- Configuration in Google Sheets (easy for everyone to update)
+
+### **Migration Overview**
+
+You'll be moving from:
+
+```
+❌ 5 Secrets:
+   1. GOOGLE_CREDENTIALS_JSON
+   2. SHEET_NAME
+   3. DEFAULT_REVIEWER_NUMBER
+   4. EXPERIENCED_DEV_NAMES
+   5. REVIEWERS_CONFIG_LIST
+
+✅ 1 Secret + 1 Variable:
+   Secret:   GOOGLE_CREDENTIALS_JSON
+   Variable: SHEET_NAMES (supports single or multiple sheets)
+   
+   → Everything else moves to Config sheet in Google Sheets!
+```
+
+### **Why This Change?**
+
+1. **Fewer Secrets to Manage:** 5 → 1 secret
+2. **Better Organization:** Sensitive data (credentials) separate from config (sheet names)
+3. **Easier Updates:** Edit Config sheet instead of GitHub Secrets
+4. **Team-Friendly:** Non-technical users can update configuration
+5. **Visible Config:** See sheet names without re-entering them
+
+### **🆕 Bonus: Multi-Sheet Support**
+
+As part of this update, you can now manage multiple teams (Frontend, Backend, Mobile) with separate Google Sheets - all processed automatically!
+
+---
+
 ## 📋 Complete List of Changes
 
 ### **Individual Developers Sheet (FE Devs)**
@@ -135,53 +182,74 @@ Drag the sheet tabs at the bottom to ensure this order:
 2. **Individual Developers / FE Devs** (must be second)
 3. **Teams** (must be third)
 
-### Step 5: Clean Up GitHub Secrets
+### Step 5: Update GitHub Configuration (5 Secrets → 1 Secret + 1 Variable)
 
 Go to GitHub → Repository Settings → Secrets and Variables → Actions
 
-**Delete these secrets (no longer needed):**
+**A) Create Variable (New!):**
 
-- ❌ **`DEFAULT_REVIEWER_NUMBER`**
-  - **Why removed:** This configuration is now stored in the Config sheet (Cell B2)
-  - **Benefit:** Non-technical team members can update it without GitHub access
-  - **Where it is now:** Config sheet, Cell B2
+1. Click **"Variables" tab**
+2. Click **"New repository variable"**
+3. Create this variable:
 
-- ❌ **`EXPERIENCED_DEV_NAMES`**
-  - **Why removed:** This list is now stored in the Config sheet (Column A, from A2 onwards)
-  - **Benefit:** Easy to add/remove experienced developers without touching GitHub
-  - **Where it is now:** Config sheet, Column A (starting from A2)
+   **Variable Name:** `SHEET_NAMES`
+   
+   **For single sheet:**
+   ```
+   Front End - Code Reviewers
+   ```
+   
+   **For multiple sheets:**
+   ```
+   Front End - Code Reviewers
+   Backend - Code Reviewers
+   Mobile - Code Reviewers
+   ```
 
-- ❌ **`REVIEWERS_CONFIG_LIST`**
-  - **Why removed:** The rotation logic was completely refactored and no longer uses index-based configuration
-  - **Old system:** Used the "Indexes" column to manually specify which reviewers to assign
-  - **New system:** Automatically assigns reviewers based on team composition (member count)
-  - **Status:** Completely obsolete with the new logic
-  - 📖 **[See FAQ: Why was REVIEWERS_CONFIG_LIST removed?](#why-was-reviewers_config_list-removed-what-was-the-logic-refactoring)** for detailed explanation
+**B) Delete Old Secrets:**
 
-**Keep these secrets:**
-- ✅ `GOOGLE_CREDENTIALS_JSON` - Required for authentication with Google Sheets API
-- ✅ `SHEET_NAME` - Required to identify which Google Sheet to use
+Click **"Secrets" tab** and delete these 4 secrets:
+
+- ❌ **`SHEET_NAME`** → Now a **Variable** (more visible, easier to edit)
+- ❌ **`DEFAULT_REVIEWER_NUMBER`** → Now in **Config sheet** (Cell B2)
+- ❌ **`EXPERIENCED_DEV_NAMES`** → Now in **Config sheet** (Column A)
+- ❌ **`REVIEWERS_CONFIG_LIST`** → Obsolete (new automatic logic)
+
+**C) Keep This Secret:**
+
+- ✅ **`GOOGLE_CREDENTIALS_JSON`** - Still needed (contains sensitive credentials)
+
+**Result: 5 Secrets → 1 Secret + 1 Variable** 🎉
 
 ---
 
-### 📊 GitHub Secrets: Before vs After
+### 📊 GitHub Configuration: Before vs After
 
 **BEFORE (Old System):**
 ```
-1. GOOGLE_CREDENTIALS_JSON
-2. SHEET_NAME
-3. DEFAULT_REVIEWER_NUMBER       ❌ → Moved to Config sheet
-4. EXPERIENCED_DEV_NAMES          ❌ → Moved to Config sheet
-5. REVIEWERS_CONFIG_LIST          ❌ → Obsolete (logic refactored)
+Secrets (5 total):
+1. GOOGLE_CREDENTIALS_JSON       ✅ Keep as Secret
+2. SHEET_NAME                    → Move to Variable
+3. DEFAULT_REVIEWER_NUMBER       → Move to Config sheet
+4. EXPERIENCED_DEV_NAMES         → Move to Config sheet
+5. REVIEWERS_CONFIG_LIST         → Delete (obsolete)
 ```
 
 **AFTER (New System):**
 ```
-1. GOOGLE_CREDENTIALS_JSON        ✅ Still needed
-2. SHEET_NAME                     ✅ Still needed
+Secrets (1 total):
+1. GOOGLE_CREDENTIALS_JSON       ✅ Only secret needed
+
+Variables (1 total):
+1. SHEET_NAMES                   ✅ Visible & editable
+   (works for single or multiple sheets)
+
+Config Sheet (in Google Sheets):
+- Default Number of Reviewers
+- Experienced Developer Names
 ```
 
-**Result:** 5 secrets → 2 secrets 🎉
+**Result:** 5 GitHub Secrets → 1 Secret + 1 Variable + Config Sheet 🎉
 
 ### Step 6: Test the Setup
 
@@ -349,6 +417,7 @@ If you need to revert to the old system:
 
 Use this checklist to ensure you've completed all steps:
 
+**Google Sheet Changes:**
 - [ ] Renamed `Reviewer Number` → `Number of Reviewers` in Individual Developers sheet
 - [ ] Renamed `Indexes` → `Preferable Reviewers` in Individual Developers sheet
 - [ ] Renamed `Default Developer` → `Team Developers` in Teams sheet
@@ -358,11 +427,19 @@ Use this checklist to ensure you've completed all steps:
 - [ ] Added experienced developer names to Config sheet (Column A, from A2)
 - [ ] Added default reviewer number to Config sheet (Cell B2)
 - [ ] Reordered sheets: Config (1st), Individual Developers (2nd), Teams (3rd)
-- [ ] Deleted `DEFAULT_REVIEWER_NUMBER` secret from GitHub
-- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret from GitHub
-- [ ] Deleted `REVIEWERS_CONFIG_LIST` secret from GitHub (if it exists)
+
+**GitHub Configuration Changes (5 → 1 + 1):**
+- [ ] Created `SHEET_NAMES` **Variable** (not Secret!) in GitHub
+- [ ] Kept `GOOGLE_CREDENTIALS_JSON` **Secret** (only secret needed)
+- [ ] Deleted `SHEET_NAME` secret (moved to Variable)
+- [ ] Deleted `DEFAULT_REVIEWER_NUMBER` secret (moved to Config sheet)
+- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret (moved to Config sheet)
+- [ ] Deleted `REVIEWERS_CONFIG_LIST` secret (obsolete)
+
+**Testing:**
 - [ ] Tested with a manual workflow run
 - [ ] Verified reviewers were assigned correctly
+- [ ] Confirmed only 1 secret + 1 variable remain in GitHub
 
 ---
 

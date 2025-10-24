@@ -11,9 +11,15 @@ from lib.utilities import get_remote_sheet
 from lib.env_constants import CONFIG_SHEET
 
 
-def load_config_from_sheet() -> Tuple[int, Set[str]]:
+def load_config_from_sheet(
+    sheet_name: str | None = None
+) -> Tuple[int, Set[str]]:
     """
     Load configuration from the Config sheet (index 0).
+
+    Args:
+        sheet_name: Optional name of the Google Sheet file to open.
+            If None, uses SHEET_NAME from environment variable.
 
     Expected format:
     - Column A: "Experienced Developers" with names listed below
@@ -24,7 +30,7 @@ def load_config_from_sheet() -> Tuple[int, Set[str]]:
         Falls back to defaults if Config sheet is missing or invalid
     """
     try:
-        with get_remote_sheet(CONFIG_SHEET) as sheet:
+        with get_remote_sheet(CONFIG_SHEET, sheet_name) as sheet:
             # Get all values from the sheet
             all_values = sheet.get_all_values()
 
@@ -66,10 +72,11 @@ def load_config_from_sheet() -> Tuple[int, Set[str]]:
                 )
 
             print(
-                f"Config loaded: Default reviewers={default_reviewer_number}, "
+                f"Config loaded: Default reviewers="
+                f"{default_reviewer_number}, "
                 f"Experienced devs={len(experienced_devs)}"
             )
-            
+
             if experienced_devs:
                 print(f"   Names from Config sheet: {sorted(experienced_devs)}")
 

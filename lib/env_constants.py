@@ -8,7 +8,28 @@ DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
 ]
-SHEET_NAME = os.environ.get("SHEET_NAME")
+
+def get_sheet_names() -> list[str]:
+    """
+    Parse sheet names from SHEET_NAMES environment variable.
+    Supports single or multiple sheets separated by newlines.
+
+    Returns:
+        List of sheet names to process
+    """
+    sheet_names_env = os.environ.get("SHEET_NAMES", "").strip()
+
+    if sheet_names_env:
+        # Parse multiline format (works for single or multiple sheets)
+        names = [
+            name.strip()
+            for name in sheet_names_env.split("\n")
+            if name.strip()
+        ]
+        return names
+
+    return []
+
 
 # Sheet indices (0-based)
 CONFIG_SHEET = 0  # First sheet - Configuration

@@ -37,81 +37,216 @@ Assigns reviewers to teams based on team composition:
 - **"Team Developers"**: Comma-separated list of developers in this team
 - **"Number of Reviewers"**: How many reviewers this team needs (uses `DEFAULT_REVIEWER_NUMBER` if empty)
 
-## Environment Variables / GitHub Secrets
+## Environment Variables / GitHub Configuration
 
-**Required Secrets:**
+### 🔒 Required Secrets (Sensitive Data)
 
-1. **GOOGLE_CREDENTIALS_JSON** (GitHub Actions): Full JSON content of your Google Service Account credentials file
-2. **SHEET_NAME**: The name of your Google Sheet (e.g., "PVC Front End - Code Reviewers")
+**GitHub Actions → Settings → Secrets and variables → Actions → Secrets:**
 
-**For Local Development:**
+1. **GOOGLE_CREDENTIALS_JSON**: Full JSON content of your Google Service Account credentials file
+   - This is **sensitive** and should be kept secret!
+
+### 📋 Required Variables (Non-Sensitive Config)
+
+**GitHub Actions → Settings → Secrets and variables → Actions → Variables:**
+
+- **SHEET_NAMES**: Sheet name(s) - one per line
+  - **Single sheet:**
+    ```
+    Front End - Code Reviewers
+    ```
+  - **Multiple sheets:**
+    ```
+    Front End - Code Reviewers
+    Backend - Code Reviewers
+    Mobile - Code Reviewers
+    ```
+  - Works for both single and multiple sheets!
+  - Each sheet must be shared with the Service Account
+
+**Why Variables instead of Secrets?**
+- ✅ **Visible**: You can see the current value
+- ✅ **Editable**: Easy to update without re-entering everything
+- ✅ **Same security**: Only repo admins/collaborators can access
+- ✅ **Not sensitive**: Sheet names don't grant access (the Service Account credentials do)
+
+### 🖥️ For Local Development
+
 - **CREDENTIAL_FILE**: Path to your Service Account JSON file (usually `credentials.json`)
-- **SHEET_NAME**: Same as above
+- **SHEET_NAMES**: Sheet name(s) - one per line
 
-**Configuration (No longer in secrets!):**
+### ⚙️ Configuration (No longer in secrets!)
+
 - ✨ **Default Number of Reviewers**: Now stored in Config sheet (Cell B2)
 - ✨ **Experienced Developer Names**: Now stored in Config sheet (Column A, from A2 onwards)
 
-This means you can update configuration directly in the Google Sheet without touching GitHub Secrets! 🎉
+This means you can update configuration directly in the Google Sheet without touching GitHub! 🎉
 
 
 # Usage guide
 
 ## Local Development
 
-1. **Enable Google APIs** in Google Cloud Console:
-   - Enable "Google Sheets API"
-   - Enable "Google Drive API" (required by gspread library)
-   - Create a Service Account and download the credentials JSON
+### Step 1: Create Google Cloud Project & Get Credentials
 
-2. **Setup credentials**:
-   - Create a file "credentials.json" in the project root
-   - Copy the Service Account credentials into this file
+1. **Go to Google Cloud Console**: https://console.cloud.google.com
 
-3. **Setup Google Sheet**:
-   - Create a new Google Sheet
-   - Create **at least two tabs** (Config and Individual Developers are required to exist)
-   - You can name tabs whatever you like (code uses indices):
-     - **First tab (Config)** - *Must exist, content optional*:
-       - Can be completely empty (system uses defaults)
-       - Or add configuration (recommended):
-         - A1: "Experienced Developers", B1: "Default Number of Reviewers"
-         - A2+: List experienced developer names (one per row)
-         - B2: Enter default number (e.g., "2")
-     - **Second tab (Individual Developers)** - *Required with content*:
-       - E.g., "FE Devs", "Developers", "BE Devs", etc.
-       - See template structure in `example.xlsx`
-     - **Third tab (Teams)** - *Optional*:
-       - E.g., "Teams", "Team Rotation", "Projects", etc.
-       - Only needed if you want team-based rotations
-   - Share the sheet with your Service Account email
+2. **Create a new project** (or select existing):
+   - Click the project dropdown at the top
+   - Click "New Project"
+   - Name it (e.g., "Code Review Rotation")
+   - Click "Create"
 
-4. **Setup environment**:
-   - Copy `.env_template` to `.env` (if it exists)
-   - Fill in: `CREDENTIAL_FILE=credentials.json` and `SHEET_NAME=your-sheet-name`
-   - Note: No need for DEFAULT_REVIEWER_NUMBER or EXPERIENCED_DEV_NAMES!
+3. **Enable required APIs**:
+   - Go to "APIs & Services" → "Library"
+   - Search for "Google Sheets API" → Click → Enable
+   - Search for "Google Drive API" → Click → Enable
 
-5. **Install dependencies**:
+4. **Create Service Account**:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "Service Account"
+   - Enter a name (e.g., "code-review-bot")
+   - Click "Create and Continue"
+   - Skip roles (optional) → Click "Continue"
+   - Click "Done"
+
+5. **Download Credentials JSON**:
+   - Click on the service account you just created
+   - Go to "Keys" tab
+   - Click "Add Key" → "Create new key"
+   - Choose "JSON"
+   - Click "Create" (file downloads automatically)
+
+6. **Save credentials**:
+   - Rename the downloaded file to `credentials.json`
+   - Move it to your project root
+   - Open the file and **find the `client_email`** - you'll need this next!
+   - Example: `"client_email": "code-review-bot@your-project.iam.gserviceaccount.com"`
+
+### Step 2: Create Google Sheet from Template
+
+1. **Open the template**:
+   - Download `example.xlsx` from this repository
+   - Go to Google Sheets: https://sheets.google.com
+   - Click "File" → "Import" → Upload `example.xlsx`
+   - Or create a new sheet and manually create the structure
+
+2. **Create the required tabs**:
+   
+   **Tab 1: Config** (Required to exist, content optional)
+   ```
+   A1: Experienced Developers    B1: Default Number of Reviewers
+   A2: Dev2                       B2: 2
+   A3: Dev3
+   A4: Dev4
+   ...
+   ```
+   
+   **Tab 2: Individual Developers** (Required with content)
+   ```
+   A1: Developer    B1: Number of Reviewers    C1: Preferable Reviewers
+   A2: Dev1         B2: 2                      C2: Dev2, Dev3
+   A3: Dev2         B3: 2                      C3: Dev3, Dev4
+   ...
+   ```
+   
+   **Tab 3: Teams** (Optional)
+   ```
+   A1: Team         B1: Team Developers        C1: Number of Reviewers
+   A2: Team1        B2: Dev1, Dev2, Dev3       C2: 2
+   A3: Team2        B3: Dev4, Dev5             C3: 2
+   ...
+   ```
+
+3. **Share the sheet with the Service Account**:
+   - Click the "Share" button (top right)
+   - Paste the **`client_email`** from your `credentials.json`
+   - Example: `code-review-bot@your-project.iam.gserviceaccount.com`
+   - Set permission to **Editor**
+   - **Uncheck** "Notify people" (it's a bot, not a person!)
+   - Click "Share"
+
+### Step 3: Setup Environment
+
+1. **Create environment file**:
+   ```bash
+   # Create .env file
+   touch .env
+   ```
+
+2. **Add configuration**:
+   ```bash
+   # .env file contents
+   CREDENTIAL_FILE=credentials.json
+   SHEET_NAMES=Your Sheet Name Here
+   ```
+   
+   **For multiple sheets:**
+   ```bash
+   SHEET_NAMES=PVC Front End - Code Reviewers
+   PVC Backend - Code Reviewers
+   PVC Mobile - Code Reviewers
+   ```
+
+3. **Install dependencies**:
    ```bash
    poetry install
    ```
 
-6. **Run scripts**:
+### Step 4: Run the Scripts
+   
+   **Single Sheet Mode:**
    ```bash
    # For individual developer allocation (second sheet)
    poetry run python scripts/rotate_devs_reviewers.py
    
    # For teams rotation (third sheet)
    poetry run python scripts/rotate_team_reviewers.py
-   ```  
+   ```
+   
+   **Multi-Sheet Mode:** 🆕
+   ```bash
+   # Process all sheets (developers + teams)
+   poetry run python scripts/run_multi_sheet_rotation.py --type all
+   
+   # Process only developers across all sheets
+   poetry run python scripts/run_multi_sheet_rotation.py --type devs
+   
+   # Process only teams across all sheets
+   poetry run python scripts/run_multi_sheet_rotation.py --type teams
+   
+   # Manual run (updates existing column instead of creating new)
+   poetry run python scripts/run_multi_sheet_rotation.py --type all --manual
+   ```
 
 ## Automated Execution with GitHub Actions
 
-### Automated Workflow (Scheduled) 🤖
+### 🆕 Multi-Sheet Workflow (Recommended)
 
-**Workflow: "Run All Review Rotations"** (`.github/workflows/all-review-rotations.yml`)
+**Workflow: "Multi-Sheet Review Rotation"** (`.github/workflows/multi-sheet-rotation.yml`)
 
-This is the **only workflow with a cron schedule**. It runs both rotations sequentially:
+This workflow processes **multiple Google Sheets** automatically:
+
+- **Scheduled**: Runs every Wednesday at 5:00 AM Finland Time (3:00 AM UTC)
+- **Manual Trigger**: Run on-demand via GitHub Actions UI
+- **Configuration**: Add sheet names to `SHEET_NAMES` variable (one per line)
+- **Smart**: Processes all configured sheets in sequence
+- **Flexible**: Choose rotation type (all/devs/teams) and mode (scheduled/manual)
+
+**Benefits:**
+- ✅ **Multi-Team Support**: Manage rotations for Frontend, Backend, Mobile, etc.
+- ✅ **Centralized**: One workflow for all teams
+- ✅ **No Code Changes**: Add/remove sheets via GitHub Variables
+- ✅ **Error Handling**: Continues even if one sheet fails
+
+### Single-Sheet Workflows (Backward Compatible)
+
+For single-sheet setups, these workflows are still available:
+
+**Workflow: "Single Sheet - Developers Rotation"** (`.github/workflows/single-sheet-devs-rotation.yml`)
+**Workflow: "Single Sheet - Teams Rotation"** (`.github/workflows/single-sheet-teams-rotation.yml`)
+
+These workflows work with the `SHEET_NAME` variable and run:
 
 1. **Individual Developer Allocation** (First Sheet)
    - Checks if at least 15 days have passed since the last rotation
@@ -164,21 +299,47 @@ Two additional workflows are available for **manual execution only** (no cron):
 
 1. **Go to your repository Settings**
    - Navigate to Settings → Secrets and variables → Actions
-   - Click "New repository secret"
 
-2. **Add the following secrets:**
-
+2. **Add Secrets (Sensitive Data):**
+   
+   Click **"Secrets" tab** → "New repository secret"
+   
    | Secret Name | Description | Example |
    |-------------|-------------|---------|
    | `GOOGLE_CREDENTIALS_JSON` | Full JSON content of your Google Service Account credentials file | `{"type": "service_account", ...}` |
-   | `SHEET_NAME` | Name of your Google Sheet | `"PVC Front End - Code Reviewers [Demo]"` |
-   | `DEFAULT_REVIEWER_NUMBER` | Number of reviewers per developer/team | `"2"` |
-   | `EXPERIENCED_DEV_NAMES` | Comma-separated list of experienced developer names | `"Dev2, Dev3, Dev4, Dev5"` |
-
-3. **For `GOOGLE_CREDENTIALS_JSON`:**
+   
+   **For `GOOGLE_CREDENTIALS_JSON`:**
    - Open your Google Service Account credentials JSON file
    - Copy the **entire file content** (including the outer braces)
    - Paste it as the secret value
+
+3. **Add Variables (Non-Sensitive Config):** 🆕
+   
+   Click **"Variables" tab** → "New repository variable"
+   
+   **Choose ONE option:**
+   
+   | Variable Name | Description | Example |
+   |---------------|-------------|---------|
+   | `SHEET_NAMES` | Sheet name(s) - one per line | See below |
+   
+   **Enter sheet names (one per line):**
+   
+   For **single sheet:**
+   ```
+   Front End - Code Reviewers
+   ```
+   
+   For **multiple sheets:**
+   ```
+   Front End - Code Reviewers
+   Backend - Code Reviewers
+   Mobile - Code Reviewers
+   ```
+   
+   ✨ **No longer needed as secrets:**
+   - ~~`DEFAULT_REVIEWER_NUMBER`~~ → Now in Config sheet (Cell B2)
+   - ~~`EXPERIENCED_DEV_NAMES`~~ → Now in Config sheet (Column A)
 
 4. **Manual Triggers:**
    
