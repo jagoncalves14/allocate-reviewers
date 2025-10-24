@@ -2,8 +2,8 @@ name: Run All Review Rotations
 
 on:
   schedule:
-    # TESTING: Runs every 3 minutes (REMEMBER TO REVERT!)
-    - cron: '*/3 * * * *'
+    # Runs every Wednesday at 5:00 AM Finland Time (3:00 AM UTC)
+    - cron: '0 3 * * 3'
   workflow_dispatch:
     inputs:
       manual_run:
