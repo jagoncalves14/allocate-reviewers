@@ -60,7 +60,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib.utilities import (  # noqa: E402
     get_remote_sheet,
     load_developers_from_sheet,
-    column_number_to_letter,
+    format_and_resize_columns,
     update_current_team_rotation,
 )
 from lib.data_types import Developer  # noqa: E402
@@ -225,79 +225,9 @@ def write_reviewers_to_sheet(teams: List[Developer]) -> None:
 
         sheet.insert_cols([new_column], column_index)
 
-        # Apply styling: light blue for new, light grey for 5 old
+        # Format and resize columns
         num_rows = len(records) + 1
-        last_col = sheet.col_count
-
-        try:
-            # Style up to 5 older columns to the right (if they exist)
-            max_old_cols_to_style = 5
-            cols_to_style = min(
-                max_old_cols_to_style, last_col - column_index
-            )
-
-            if cols_to_style > 0:
-                for i in range(1, cols_to_style + 1):
-                    col = column_index + i
-                    col_letter = column_number_to_letter(col)
-                    # Header: white bg, light grey text, not bold
-                    sheet.format(
-                        f"{col_letter}1",
-                        {
-                            "backgroundColor": {
-                                "red": 1,
-                                "green": 1,
-                                "blue": 1,
-                            },
-                            "textFormat": {
-                                "foregroundColor": {
-                                    "red": 0.8,
-                                    "green": 0.8,
-                                    "blue": 0.8,
-                                },
-                                "bold": False,
-                            },
-                        },
-                    )
-                    # Data rows: light grey text, not bold
-                    if num_rows > 1:
-                        sheet.format(
-                            f"{col_letter}2:{col_letter}{num_rows}",
-                            {
-                                "backgroundColor": {
-                                    "red": 1,
-                                    "green": 1,
-                                    "blue": 1,
-                                },
-                                "textFormat": {
-                                    "foregroundColor": {
-                                        "red": 0.8,
-                                        "green": 0.8,
-                                        "blue": 0.8,
-                                    },
-                                    "bold": False,
-                                }
-                            },
-                        )
-
-            # Apply light blue background to header of new column
-            new_col_letter = column_number_to_letter(column_index)
-            sheet.format(
-                f"{new_col_letter}1",
-                {
-                    "backgroundColor": {
-                        "red": 0.85,
-                        "green": 0.92,
-                        "blue": 1,
-                    },
-                    "textFormat": {
-                        "foregroundColor": {"red": 0, "green": 0, "blue": 0},
-                        "bold": True,
-                    },
-                },
-            )
-        except Exception as e:  # noqa: BLE001
-            print(f"Warning: Could not apply background colors: {e}")
+        format_and_resize_columns(sheet, column_index, num_rows)
 
 
 if __name__ == "__main__":

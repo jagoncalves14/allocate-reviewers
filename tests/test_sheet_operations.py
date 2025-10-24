@@ -12,7 +12,6 @@ from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
 from lib.utilities import (
     get_remote_sheet,
     load_developers_from_sheet,
-    write_exception_to_sheet,
 )
 from lib.data_types import Developer
 from lib.env_constants import (
@@ -85,23 +84,3 @@ def test_write_reviewers_to_sheet(
             write_reviewers_to_sheet(mocked_devs)
             mocked_sheet.insert_cols.assert_called_once_with(new_column, 4)
 
-
-@freeze_time("2022-09-30 12:12:12")
-@pytest.mark.parametrize(
-    "headers,expected_start_column",
-    [
-        (EXPECTED_HEADERS_FOR_ALLOCATION, 4),
-        (EXPECTED_HEADERS_FOR_ROTATION, 4),
-    ],
-)
-def test_write_exception_to_sheet(
-    mocked_sheet: Worksheet, headers: List[str], expected_start_column: int
-) -> None:
-    new_column = [["Exception 30-09-2022", "Awesome error!"]]
-
-    write_exception_to_sheet(headers, "Awesome error!")
-
-    mocked_sheet.insert_cols.assert_called_once_with(
-        new_column,
-        expected_start_column
-    )

@@ -99,7 +99,7 @@ from lib.utilities import (  # noqa: E402
     load_developers_from_sheet,
     get_remote_sheet,
     update_current_sprint_reviewers,
-    column_number_to_letter,
+    format_and_resize_columns,
 )
 
 load_dotenv(find_dotenv())
@@ -301,66 +301,9 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
             new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
 
-        # Style columns (optional - skip if rate limited)
-        try:
-            num_rows = len(records) + 1
-            last_col = sheet.col_count
-
-            # Apply light blue background ONLY to header of new column
-            new_col_letter = column_number_to_letter(column_index)
-            sheet.format(f"{new_col_letter}1", {
-                "backgroundColor": {"red": 0.85, "green": 0.92, "blue": 1},
-                "textFormat": {
-                    "foregroundColor": {"red": 0, "green": 0, "blue": 0},
-                    "bold": True
-                }
-            })
-
-            # Style older columns (if quota allows)
-            if last_col > column_index:
-                for col in range(
-                    column_index + 1, min(last_col + 1, column_index + 6)
-                ):
-                    col_letter = column_number_to_letter(col)
-                    sheet.format(
-                        f"{col_letter}1",
-                        {
-                            "backgroundColor": {
-                                "red": 1,
-                                "green": 1,
-                                "blue": 1,
-                            },
-                            "textFormat": {
-                                "foregroundColor": {
-                                    "red": 0.8,
-                                    "green": 0.8,
-                                    "blue": 0.8,
-                                },
-                                "bold": False,
-                            },
-                        },
-                    )
-                    if num_rows > 1:
-                        sheet.format(
-                            f"{col_letter}2:{col_letter}{num_rows}",
-                            {
-                                "backgroundColor": {
-                                    "red": 1,
-                                    "green": 1,
-                                    "blue": 1,
-                                },
-                                "textFormat": {
-                                    "foregroundColor": {
-                                        "red": 0.8,
-                                        "green": 0.8,
-                                        "blue": 0.8,
-                                    },
-                                    "bold": False,
-                                },
-                            },
-                        )
-        except Exception as e:
-            print(f"Note: Styling skipped (quota or other issue): {e}")
+        # Format and resize columns
+        num_rows = len(records) + 1
+        format_and_resize_columns(sheet, column_index, num_rows)
 
 
 if __name__ == "__main__":
