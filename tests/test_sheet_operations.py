@@ -12,6 +12,8 @@ from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
 from lib.utilities import (
     get_remote_sheet,
     load_developers_from_sheet,
+    format_and_resize_columns,
+    update_current_sprint_reviewers,
 )
 from lib.data_types import Developer
 from lib.env_constants import (
@@ -84,3 +86,127 @@ def test_write_reviewers_to_sheet(
             write_reviewers_to_sheet(mocked_devs)
             mocked_sheet.insert_cols.assert_called_once_with(new_column, 4)
 
+
+def test_format_and_resize_columns_batch_update() -> None:
+    """Test that format_and_resize_columns batches all operations into single API call."""
+    mocked_sheet = Mock(spec=Worksheet)
+    mocked_sheet.id = 123
+    mocked_sheet.col_count = 5
+    mocked_spreadsheet = Mock()
+    mocked_sheet.spreadsheet = mocked_spreadsheet
+
+    # Call with column 4, 6 rows (including header)
+    format_and_resize_columns(mocked_sheet, column_index=4, num_rows=6)
+
+    # Should make exactly ONE batch_update call
+    assert mocked_spreadsheet.batch_update.call_count == 1
+
+    # Get the requests from the call
+    call_args = mocked_spreadsheet.batch_update.call_args[0][0]
+    requests = call_args["requests"]
+
+    # Should have 6 requests:
+    # 1. repeatCell for current header
+    # 2. repeatCell for current data
+    # 3. repeatCell for old header
+    # 4. repeatCell for old data
+    # 5. updateDimensionProperties for current column (280px)
+    # 6. updateDimensionProperties for old column (132px)
+    assert len(requests) == 6
+
+    # Verify current column header format (light blue, bold)
+    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
+        "red": 0.85, "green": 0.92, "blue": 1
+    }
+    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is True
+
+    # Verify old column header format (grey, not bold)
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
+        "red": 1, "green": 1, "blue": 1
+    }
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is False
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["foregroundColor"] == {
+        "red": 0.8, "green": 0.8, "blue": 0.8
+    }
+
+    # Verify current column resize (280px)
+    assert requests[4]["updateDimensionProperties"]["properties"]["pixelSize"] == 280
+    assert requests[4]["updateDimensionProperties"]["range"]["startIndex"] == 3
+    assert requests[4]["updateDimensionProperties"]["range"]["endIndex"] == 4
+
+    # Verify old column resize (132px)
+    assert requests[5]["updateDimensionProperties"]["properties"]["pixelSize"] == 132
+    assert requests[5]["updateDimensionProperties"]["range"]["startIndex"] == 4
+    assert requests[5]["updateDimensionProperties"]["range"]["endIndex"] == 5
+
+
+def test_format_and_resize_columns_no_old_columns() -> None:
+    """Test formatting when there are no old columns to style."""
+    mocked_sheet = Mock(spec=Worksheet)
+    mocked_sheet.id = 123
+    mocked_sheet.col_count = 4  # No columns after column 4
+    mocked_spreadsheet = Mock()
+    mocked_sheet.spreadsheet = mocked_spreadsheet
+
+    format_and_resize_columns(mocked_sheet, column_index=4, num_rows=3)
+
+    # Should still make ONE batch_update call
+    assert mocked_spreadsheet.batch_update.call_count == 1
+
+    # Get the requests from the call
+    call_args = mocked_spreadsheet.batch_update.call_args[0][0]
+    requests = call_args["requests"]
+
+    # Should have only 3 requests (no old column operations):
+    # 1. repeatCell for current header
+    # 2. repeatCell for current data
+    # 3. updateDimensionProperties for current column
+    assert len(requests) == 3
+
+
+@freeze_time("2022-10-15 10:30:00")
+def test_update_current_sprint_reviewers_batch_update(
+    mocked_devs: List[Developer],
+) -> None:
+    """Test that update_current_sprint_reviewers uses batch update for all cells."""
+    with patch("lib.utilities.get_remote_sheet") as mocked_get_remote_sheet:
+        with mocked_get_remote_sheet() as mocked_sheet:
+            # Setup
+            mocked_sheet.row_values.return_value = ["Developer", "Number", "Preferable", "10-10-2022"]
+            mocked_sheet.get_all_records.return_value = SHEET
+            mocked_sheet.id = 456
+            mocked_sheet.col_count = 5
+            mocked_spreadsheet = Mock()
+            mocked_sheet.spreadsheet = mocked_spreadsheet
+
+            DEV_REVIEWERS_MAPPER = {
+                "B": set(("C", "D")),
+                "E": set(("A",)),
+            }
+            mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
+
+            # Call the function
+            update_current_sprint_reviewers(
+                EXPECTED_HEADERS_FOR_ALLOCATION,
+                mocked_devs
+            )
+
+            # Should NOT call update_cell at all
+            assert not mocked_sheet.update_cell.called
+
+            # Should call sheet.update() exactly once for data
+            assert mocked_sheet.update.call_count == 1
+
+            # Verify the update call
+            update_call_args = mocked_sheet.update.call_args[0]
+            range_str = update_call_args[0]
+            data = update_call_args[1]
+
+            # Range should be D1:D6 (column 4, 6 rows)
+            assert range_str == "D1:D6"
+
+            # Data should be [[header], [row1], [row2], [row3], [row4], [row5]]
+            assert len(data) == 6
+            assert data[0][0] == "10-10-2022 / Manual Run on: 15-10-2022"
+            assert data[2][0] == "C, D"  # Developer B
+            assert data[5][0] == "A"  # Developer E

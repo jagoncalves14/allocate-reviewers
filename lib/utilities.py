@@ -150,56 +150,181 @@ def format_and_resize_columns(
     - Current column: light blue header, bold, 280px width
     - Older columns: grey header/data, not bold, 132px width
 
-    All resize operations are batched into a single API call for efficiency.
+    All operations (formatting + resizing) batched into single API call.
     """
     last_col = sheet.col_count
+    # Convert to 0-based index for API
+    col_idx_0based = column_index - 1
 
     try:
-        # Format current date column (color/text only)
-        format_current_date_column(sheet, column_index, num_rows)
+        requests = []
 
-        # Format older columns (if they exist, color/text only)
-        if last_col > column_index:
-            max_cols = min(num_old_columns_to_style, last_col - column_index)
-            for i in range(1, max_cols + 1):
-                col = column_index + i
-                format_old_date_column(sheet, col, num_rows)
+        # 1. Format current column header (light blue, bold)
+        requests.append({
+            "repeatCell": {
+                "range": {
+                    "sheetId": sheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                    "startColumnIndex": col_idx_0based,
+                    "endColumnIndex": col_idx_0based + 1,
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {
+                            "red": 0.85,
+                            "green": 0.92,
+                            "blue": 1,
+                        },
+                        "textFormat": {
+                            "foregroundColor": {
+                                "red": 0,
+                                "green": 0,
+                                "blue": 0,
+                            },
+                            "bold": True,
+                        },
+                    }
+                },
+                "fields": "userEnteredFormat(backgroundColor,textFormat)",
+            }
+        })
 
-        # Batch all resize operations into a single API call
-        resize_requests = [
-            {
-                "updateDimensionProperties": {
+        # 2. Format current column data rows (light blue, not bold)
+        if num_rows > 1:
+            requests.append({
+                "repeatCell": {
                     "range": {
                         "sheetId": sheet.id,
-                        "dimension": "COLUMNS",
-                        "startIndex": column_index - 1,
-                        "endIndex": column_index,
+                        "startRowIndex": 1,
+                        "endRowIndex": num_rows,
+                        "startColumnIndex": col_idx_0based,
+                        "endColumnIndex": col_idx_0based + 1,
                     },
-                    "properties": {"pixelSize": 280},
-                    "fields": "pixelSize",
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.85,
+                                "green": 0.92,
+                                "blue": 1,
+                            },
+                            "textFormat": {
+                                "foregroundColor": {
+                                    "red": 0,
+                                    "green": 0,
+                                    "blue": 0,
+                                },
+                                "bold": False,
+                            },
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat)",
                 }
-            }
-        ]
+            })
 
-        # Add old columns resize (if they exist)
+        # 3. Format old columns (if they exist)
         if last_col > column_index:
             max_cols = min(num_old_columns_to_style, last_col - column_index)
             if max_cols > 0:
-                resize_requests.append({
+                old_col_start_idx = col_idx_0based + 1
+                old_col_end_idx = old_col_start_idx + max_cols
+
+                # 3a. Old column header (grey, not bold)
+                requests.append({
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet.id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": old_col_start_idx,
+                            "endColumnIndex": old_col_end_idx,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {
+                                    "red": 1,
+                                    "green": 1,
+                                    "blue": 1,
+                                },
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0.8,
+                                        "green": 0.8,
+                                        "blue": 0.8,
+                                    },
+                                    "bold": False,
+                                },
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                    }
+                })
+
+                # 3b. Old column data rows (grey, not bold)
+                if num_rows > 1:
+                    requests.append({
+                        "repeatCell": {
+                            "range": {
+                                "sheetId": sheet.id,
+                                "startRowIndex": 1,
+                                "endRowIndex": num_rows,
+                                "startColumnIndex": old_col_start_idx,
+                                "endColumnIndex": old_col_end_idx,
+                            },
+                            "cell": {
+                                "userEnteredFormat": {
+                                    "backgroundColor": {
+                                        "red": 1,
+                                        "green": 1,
+                                        "blue": 1,
+                                    },
+                                    "textFormat": {
+                                        "foregroundColor": {
+                                            "red": 0.8,
+                                            "green": 0.8,
+                                            "blue": 0.8,
+                                        },
+                                        "bold": False,
+                                    },
+                                }
+                            },
+                            "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                        }
+                    })
+
+        # 4. Resize current column (280px)
+        requests.append({
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": sheet.id,
+                    "dimension": "COLUMNS",
+                    "startIndex": col_idx_0based,
+                    "endIndex": col_idx_0based + 1,
+                },
+                "properties": {"pixelSize": 280},
+                "fields": "pixelSize",
+            }
+        })
+
+        # 5. Resize old columns (132px, if they exist)
+        if last_col > column_index:
+            max_cols = min(num_old_columns_to_style, last_col - column_index)
+            if max_cols > 0:
+                requests.append({
                     "updateDimensionProperties": {
                         "range": {
                             "sheetId": sheet.id,
                             "dimension": "COLUMNS",
-                            "startIndex": column_index,
-                            "endIndex": column_index + max_cols,
+                            "startIndex": col_idx_0based + 1,
+                            "endIndex": col_idx_0based + 1 + max_cols,
                         },
                         "properties": {"pixelSize": 132},
                         "fields": "pixelSize",
                     }
                 })
 
-        # Single batch_update call for all resizes
-        sheet.spreadsheet.batch_update({"requests": resize_requests})
+        # Single batch_update call for ALL operations
+        sheet.spreadsheet.batch_update({"requests": requests})
 
     except Exception as e:  # noqa: BLE001
         print(f"Note: Column formatting/resizing skipped: {e}")
@@ -313,19 +438,21 @@ def update_current_sprint_reviewers(
         # Update the column
         records = sheet.get_all_records(expected_headers=expected_headers)
 
-        # Update header
-        sheet.update_cell(1, column_index, new_header)
-
-        # Update reviewer assignments
-        for idx, record in enumerate(records, start=2):
+        # Build column data array (header + all rows)
+        column_data = [[new_header]]
+        for record in records:
             developer = next(
                 dev for dev in devs if dev.name == record[DEVELOPER_HEADER]
             )
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
-            sheet.update_cell(idx, column_index, reviewer_names)
+            column_data.append([reviewer_names])
+
+        # Update entire column in a single API call
+        col_letter = column_number_to_letter(column_index)
+        num_rows = len(records) + 1
+        sheet.update(f"{col_letter}1:{col_letter}{num_rows}", column_data)
 
         # Format and resize columns
-        num_rows = len(records) + 1
         format_and_resize_columns(sheet, column_index, num_rows)
 
 
@@ -377,15 +504,17 @@ def update_current_team_rotation(
         # Update the columns
         records = sheet.get_all_records(expected_headers=expected_headers)
 
-        # Update reviewers column header
-        sheet.update_cell(1, column_index, new_header)
-
-        # Update reviewer assignments
-        for idx, record in enumerate(records, start=2):
+        # Build column data array (header + all rows)
+        column_data = [[new_header]]
+        for record in records:
             team = next(t for t in teams if t.name == record[TEAM_HEADER])
             reviewer_names = ", ".join(sorted(team.reviewer_names))
-            sheet.update_cell(idx, column_index, reviewer_names)
+            column_data.append([reviewer_names])
+
+        # Update entire column in a single API call
+        col_letter = column_number_to_letter(column_index)
+        num_rows = len(records) + 1
+        sheet.update(f"{col_letter}1:{col_letter}{num_rows}", column_data)
 
         # Format and resize columns
-        num_rows = len(records) + 1
         format_and_resize_columns(sheet, column_index, num_rows)
