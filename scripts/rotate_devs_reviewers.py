@@ -91,7 +91,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # pylint: next-line: disable=wrong-import-position
 from dotenv import find_dotenv, load_dotenv
-from lib.data_types import Developer, SelectableConfigure  # noqa: E402
+from lib.data_types import Developer  # noqa: E402
 from lib.env_constants import (  # noqa: E402
     EXPECTED_HEADERS_FOR_ALLOCATION,
 )
@@ -129,168 +129,415 @@ def shuffle_and_get_the_most_available_names(
     random.shuffle(names)
     # To select names that have the least assigned times.
     names.sort(
-        key=lambda name: len(next(dev for dev in devs if dev.name == name).review_for),
+        key=lambda name: len(
+            next(dev for dev in devs if dev.name == name).review_for
+        ),
     )
 
     return names[0:number_of_names]
 
 
-def allocate_reviewers(devs: List[Developer]) -> None:
+def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
     """
-    Assign reviewers to input developers.
-    The function mutate directly the input argument "devs".
+    Single attempt at assigning reviewers (internal function).
+    
+    Algorithm:
+    1. Initial blind allocation with load balancing (respects preferable
+       reviewers)
+    2. Detect and fix experience-based rule violations
+    3. Ensure non-experienced developers are assigned as reviewers
+
+    The function mutates the input argument "devs" directly.
     """
     # pylint: next-line: disable=import-outside-toplevel
     from lib.env_constants import EXPERIENCED_DEV_NAMES
 
     experienced_dev_names = set(EXPERIENCED_DEV_NAMES)
-
     all_dev_names = set((dev.name for dev in devs))
     valid_experienced_dev_names = set(
         (name for name in experienced_dev_names if name in all_dev_names)
     )
-
     non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
 
-    print(f"\n📊 Developer Classification:")
+    print("\n📊 Developer Classification:")
     print(f"   Names in FE Developers sheet: {sorted(all_dev_names)}")
-    print(f"   Names from EXPERIENCED_DEV_NAMES env: {sorted(experienced_dev_names)}")
-    print(f"   ✅ 👷 Matched (Experienced): {sorted(valid_experienced_dev_names)}")
+    print(
+        f"   Names from EXPERIENCED_DEV_NAMES env: "
+        f"{sorted(experienced_dev_names)}"
+    )
+    print(
+        f"   ✅ 👷 Matched (Experienced): "
+        f"{sorted(valid_experienced_dev_names)}"
+    )
     print(f"   ✅ 👨‍🎓 Non-experienced: {sorted(non_experienced_dev_names)}")
 
     # Show mismatches
     unmatched_from_config = experienced_dev_names - all_dev_names
     if unmatched_from_config:
-        print(f"\n⚠️  WARNING: These names from Config don't match any developer:")
+        print(
+            "\n⚠️  WARNING: These names from Config don't match "
+            "any developer:"
+        )
         for name in sorted(unmatched_from_config):
             print(f"      '{name}' (length: {len(name)}, repr: {repr(name)})")
 
     print(f"   Total: {len(all_dev_names)} developers\n")
 
-    # To process devs with preferable_reviewer_names first.
-    devs.sort(key=lambda dev: dev.preferable_reviewer_names, reverse=True)
+    # PHASE 1: Initial blind allocation with load balancing
+    print("=" * 60)
+    print("PHASE 1: Initial allocation (blind, with load balancing)")
+    print("=" * 60)
+
+    # Process devs with preferable_reviewer_names first
+    devs.sort(
+        key=lambda dev: len(dev.preferable_reviewer_names), reverse=True
+    )
 
     for dev in devs:
-        chosen_reviewer_names: Set[str] = set()
         reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
-        is_experienced_dev = dev.name in valid_experienced_dev_names
+        is_experienced = dev.name in valid_experienced_dev_names
+        exp_label = (
+            "👷 Experienced" if is_experienced else "👨‍🎓 Non-experienced"
+        )
 
-        exp_label = "👷 Experienced" if is_experienced_dev else "👨‍🎓 Non-experienced"
         print(
-            f"🔄 Processing {dev.name} ({exp_label}, needs {reviewer_number} reviewers)"
+            f"🔄 {dev.name} ({exp_label}, needs {reviewer_number} reviewers)"
         )
 
-        # Track non-experienced devs for filtering
-        current_non_experienced = all_dev_names - valid_experienced_dev_names
+        chosen_reviewer_names: Set[str] = set()
 
-        def selectable_number_getter() -> int:
-            return max(reviewer_number - len(chosen_reviewer_names), 0)
-
-        def experienced_reviewer_number_getter() -> int:
-            # Check if we already have an experienced reviewer
-            has_experienced = any(
-                name in valid_experienced_dev_names for name in chosen_reviewer_names
+        # Step 1: Try preferable reviewers first
+        if dev.preferable_reviewer_names:
+            available_preferable = (
+                dev.preferable_reviewer_names - {dev.name}
             )
-            if has_experienced:
-                return 0
-            # EVERYONE must have at least 1 experienced reviewer
-            return 1
-
-        def non_experienced_pool_getter() -> int:
-            """
-            Get number of slots to fill from non-experienced pool.
-            - Non-experienced devs: NEVER (return 0)
-            - Experienced devs: at most 1 non-experienced reviewer
-            """
-            if not is_experienced_dev:
-                # Non-experienced devs can ONLY have experienced reviewers
-                return 0
-
-            # Count how many non-experienced reviewers already assigned
-            non_experienced_count = sum(
-                1 for name in chosen_reviewer_names if name in current_non_experienced
-            )
-
-            # Check if we have remaining slots
-            remaining_slots = reviewer_number - len(chosen_reviewer_names)
-
-            # Can add at most 1 non-experienced, and only if we have space
-            if non_experienced_count == 0 and remaining_slots > 0:
-                return min(1, remaining_slots)
-            return 0
-
-        # Build the selection pipeline
-        # For non-experienced devs: preferable must also be experienced
-        preferable_pool = (
-            dev.preferable_reviewer_names & valid_experienced_dev_names
-            if not is_experienced_dev
-            else dev.preferable_reviewer_names
-        )
-
-        if not is_experienced_dev and dev.preferable_reviewer_names:
-            filtered_out = dev.preferable_reviewer_names - valid_experienced_dev_names
-            if filtered_out:
-                print(f"   ⚠️  Filtered non-experienced from preferable: {filtered_out}")
-
-        configures = [
-            # Phase 1: Try preferable reviewers first
-            SelectableConfigure(
-                names=preferable_pool,
-                number_getter=selectable_number_getter,
-            ),
-            # Phase 2: Ensure at least 1 experienced reviewer (mandatory)
-            SelectableConfigure(
-                names=valid_experienced_dev_names,
-                number_getter=experienced_reviewer_number_getter,
-            ),
-            # Phase 3: Fill remaining slots with experienced devs
-            SelectableConfigure(
-                names=valid_experienced_dev_names,
-                number_getter=selectable_number_getter,
-            ),
-            # Phase 4: For exp. devs only, can add up to 1 non-exp.
-            SelectableConfigure(
-                names=current_non_experienced,
-                number_getter=non_experienced_pool_getter,
-            ),
-        ]
-
-        for configure in configures:
-            selectable_names = set(
-                (
-                    name
-                    for name in configure.names
-                    if name not in [dev.name, *chosen_reviewer_names]
+            needed = reviewer_number - len(chosen_reviewer_names)
+            if available_preferable and needed > 0:
+                selected = shuffle_and_get_the_most_available_names(
+                    available_preferable, needed, devs
                 )
-            )
-            selectable_number = configure.number_getter()
-            chosen_names = shuffle_and_get_the_most_available_names(
-                selectable_names, selectable_number, devs
-            )
-            chosen_reviewer_names.update(chosen_names)
+                chosen_reviewer_names.update(selected)
+                print(f"   Preferable: {sorted(selected)}")
 
-        reviewers = (dev for dev in devs if dev.name in chosen_reviewer_names)
-        for reviewer in reviewers:
-            dev.reviewer_names.add(reviewer.name)
+        # Step 2: Fill remaining slots from all available devs
+        # (blind allocation)
+        remaining_needed = reviewer_number - len(chosen_reviewer_names)
+        if remaining_needed > 0:
+            available = all_dev_names - chosen_reviewer_names - {dev.name}
+            selected = shuffle_and_get_the_most_available_names(
+                available, remaining_needed, devs
+            )
+            chosen_reviewer_names.update(selected)
+            if selected:
+                print(f"   Filled: {sorted(selected)}")
+
+        # Apply assignments
+        for reviewer_name in chosen_reviewer_names:
+            reviewer = next(d for d in devs if d.name == reviewer_name)
+            dev.reviewer_names.add(reviewer_name)
             reviewer.review_for.add(dev.name)
 
-        # Verify assignment correctness
-        assigned_experienced = chosen_reviewer_names & valid_experienced_dev_names
-        assigned_non_experienced = chosen_reviewer_names & non_experienced_dev_names
+        print(f"   ✅ Total assigned: {sorted(chosen_reviewer_names)}\n")
 
-        print(f"   ✅ Assigned: {sorted(chosen_reviewer_names)}")
+    # PHASE 2: Fix experience-based rule violations
+    print("\n" + "=" * 60)
+    print("PHASE 2: Fix experience-based rule violations")
+    print("=" * 60)
+
+    for dev in devs:
+        is_experienced = dev.name in valid_experienced_dev_names
+        exp_label = "👷 Exp" if is_experienced else "👨‍🎓 Non-exp"
+
+        # Recalculate assignments fresh for each developer
+        assigned_exp = dev.reviewer_names & valid_experienced_dev_names
+        assigned_non_exp = dev.reviewer_names & non_experienced_dev_names
+
+        # Rule 1: Everyone must have at least 1 experienced reviewer
+        if len(assigned_exp) == 0:
+            msg = f"⚠️  {dev.name} ({exp_label}) has NO experienced reviewer!"
+            print(msg)
+            # Find available experienced devs
+            available_exp = (
+                valid_experienced_dev_names - dev.reviewer_names - {dev.name}
+            )
+            if available_exp:
+                # Pick least loaded
+                candidates = [d for d in devs if d.name in available_exp]
+                candidates.sort(key=lambda d: len(d.review_for))
+                replacement = candidates[0]
+
+                # Recalculate assigned_non_exp in case it changed
+                current_non_exp = (
+                    dev.reviewer_names & non_experienced_dev_names
+                )
+                # If we need to make space, remove a non-exp reviewer
+                if (
+                    len(dev.reviewer_names) >= dev.reviewer_number
+                    and current_non_exp
+                ):
+                    to_remove = list(current_non_exp)[0]
+                    removed_dev = next(
+                        d for d in devs if d.name == to_remove
+                    )
+                    dev.reviewer_names.remove(to_remove)
+                    removed_dev.review_for.remove(dev.name)
+                    print(f"   Removed: {to_remove}")
+
+                # Add experienced reviewer
+                dev.reviewer_names.add(replacement.name)
+                replacement.review_for.add(dev.name)
+                msg = f"   ✅ Added experienced reviewer: {replacement.name}\n"
+                print(msg)
+
+        # Rule 2: Non-experienced devs can ONLY have experienced reviewers
+        # Recalculate to get current state
+        current_non_exp_reviewers = (
+            dev.reviewer_names & non_experienced_dev_names
+        )
+        if not is_experienced and len(current_non_exp_reviewers) > 0:
+            msg = (
+                f"⚠️  {dev.name} (Non-exp) has non-exp reviewers: "
+                f"{current_non_exp_reviewers}"
+            )
+            print(msg)
+            # Make a copy of the set to avoid modification during iteration
+            for non_exp_name in list(current_non_exp_reviewers):
+                # Check if it's still there (might have been removed)
+                if non_exp_name not in dev.reviewer_names:
+                    continue
+
+                # Remove non-exp reviewer
+                non_exp_dev = next(
+                    d for d in devs if d.name == non_exp_name
+                )
+                dev.reviewer_names.discard(non_exp_name)
+                non_exp_dev.review_for.discard(dev.name)
+                print(f"   Removed: {non_exp_name}")
+
+                # Replace with experienced reviewer
+                available_exp = (
+                    valid_experienced_dev_names
+                    - dev.reviewer_names
+                    - {dev.name}
+                )
+                if available_exp:
+                    candidates = [
+                        d for d in devs if d.name in available_exp
+                    ]
+                    candidates.sort(key=lambda d: len(d.review_for))
+                    replacement = candidates[0]
+                    dev.reviewer_names.add(replacement.name)
+                    replacement.review_for.add(dev.name)
+                    print(f"   ✅ Replaced with: {replacement.name}")
+            print()
+
+        # Rule 3: Experienced devs can have at most 1 non-experienced
+        # reviewer
+        # Recalculate to get current state
+        current_non_exp_reviewers = (
+            dev.reviewer_names & non_experienced_dev_names
+        )
+        if is_experienced and len(current_non_exp_reviewers) > 1:
+            msg = (
+                f"⚠️  {dev.name} (Exp) has "
+                f"{len(current_non_exp_reviewers)} "
+                f"non-exp reviewers: {current_non_exp_reviewers}"
+            )
+            print(msg)
+            # Keep only 1 non-exp, remove the rest
+            non_exp_list = list(current_non_exp_reviewers)
+            to_keep = non_exp_list[0]
+            to_remove = non_exp_list[1:]
+            for non_exp_name in to_remove:
+                non_exp_dev = next(
+                    d for d in devs if d.name == non_exp_name
+                )
+                dev.reviewer_names.discard(non_exp_name)
+                non_exp_dev.review_for.discard(dev.name)
+                print(f"   Removed: {non_exp_name}")
+
+                # Replace with experienced reviewer
+                available_exp = (
+                    valid_experienced_dev_names
+                    - dev.reviewer_names
+                    - {dev.name}
+                )
+                if available_exp:
+                    candidates = [
+                        d for d in devs if d.name in available_exp
+                    ]
+                    candidates.sort(key=lambda d: len(d.review_for))
+                    replacement = candidates[0]
+                    dev.reviewer_names.add(replacement.name)
+                    replacement.review_for.add(dev.name)
+                    print(f"   ✅ Replaced with: {replacement.name}")
+            print(f"   Kept: {to_keep}\n")
+
+    # PHASE 3: Ensure non-experienced developers are assigned as reviewers
+    print("\n" + "=" * 60)
+    print("PHASE 3: Ensure non-experienced devs are assigned as reviewers")
+    print("=" * 60)
+
+    unassigned_non_exp = [
+        dev
+        for dev in devs
+        if dev.name in non_experienced_dev_names
+        and len(dev.review_for) == 0
+    ]
+
+    if unassigned_non_exp:
         print(
-            f"      (Exp: {len(assigned_experienced)}, Non-exp: {len(assigned_non_experienced)})"
+            f"Found {len(unassigned_non_exp)} unassigned non-exp devs: "
+            f"{[d.name for d in unassigned_non_exp]}\n"
         )
 
-        # Validation warnings
-        if not is_experienced_dev and assigned_non_experienced:
-            print(f"   ⚠️  WARNING: Non-experienced dev has non-experienced reviewers!")
-        if is_experienced_dev and len(assigned_non_experienced) > 1:
-            print(f"   ⚠️  WARNING: Experienced dev has >1 non-experienced reviewers!")
-        if not assigned_experienced:
-            print(f"   ⚠️  WARNING: No experienced reviewer assigned!")
+        # Sort by review_for load to prioritize least loaded
+        unassigned_non_exp.sort(key=lambda d: len(d.review_for))
+
+        for non_exp_dev in unassigned_non_exp:
+            # Find experienced devs that can accept a non-experienced
+            # reviewer
+            candidates = []
+            for exp_dev in devs:
+                if exp_dev.name not in valid_experienced_dev_names:
+                    continue
+                if exp_dev.name == non_exp_dev.name:
+                    continue
+
+                # Count non-experienced reviewers this exp dev already has
+                non_exp_count = sum(
+                    1
+                    for r_name in exp_dev.reviewer_names
+                    if r_name in non_experienced_dev_names
+                )
+
+                # Check if they can accept another reviewer
+                has_space = (
+                    len(exp_dev.reviewer_names) < exp_dev.reviewer_number
+                )
+                has_no_non_exp = non_exp_count == 0
+
+                if has_space and has_no_non_exp:
+                    candidates.append(exp_dev)
+
+            if candidates:
+                # Sort by load (fewest review_for first) - maintain
+                # balance!
+                candidates.sort(key=lambda d: len(d.review_for))
+                chosen = candidates[0]
+                chosen.reviewer_names.add(non_exp_dev.name)
+                non_exp_dev.review_for.add(chosen.name)
+                msg = (
+                    f"✅ Assigned {non_exp_dev.name} to review "
+                    f"{chosen.name} (load: {len(chosen.review_for)})"
+                )
+                print(msg)
+            else:
+                msg = (
+                    f"⚠️  Could not assign {non_exp_dev.name} - "
+                    "no suitable candidates"
+                )
+                print(msg)
+    else:
+        print("✅ All non-experienced developers already assigned")
+
+    # FINAL SUMMARY
+    print("\n" + "=" * 60)
+    print("FINAL ALLOCATION SUMMARY")
+    print("=" * 60)
+    for dev in devs:
+        is_exp = dev.name in valid_experienced_dev_names
+        exp_label = "👷 Exp" if is_exp else "👨‍🎓 Non-exp"
+        assigned_exp = dev.reviewer_names & valid_experienced_dev_names
+        assigned_non_exp = dev.reviewer_names & non_experienced_dev_names
+
+        print(f"{dev.name} ({exp_label}): {sorted(dev.reviewer_names)}")
+        print(
+            f"  Reviewers: Exp={len(assigned_exp)}, "
+            f"Non-exp={len(assigned_non_exp)}"
+        )
+        review_for_str = (
+            sorted(dev.review_for) if dev.review_for else '(none)'
+        )
+        print(
+            f"  Reviewing: {len(dev.review_for)} devs {review_for_str}"
+        )
         print()
+
+
+def allocate_reviewers(devs: List[Developer], max_retries: int = 10) -> None:
+    """
+    Assign reviewers to developers with retry mechanism.
+    
+    This function wraps run_reviewer_allocation_algorithm and retries with different
+    random seeds if non-experienced developers are not assigned.
+    
+    Args:
+        devs: List of developers to assign reviewers to
+        max_retries: Maximum number of retry attempts (default: 10)
+    """
+    # pylint: next-line: disable=import-outside-toplevel
+    from lib.env_constants import EXPERIENCED_DEV_NAMES
+    from copy import deepcopy
+    
+    experienced_dev_names = set(EXPERIENCED_DEV_NAMES)
+    all_dev_names = set((dev.name for dev in devs))
+    valid_experienced_dev_names = set(
+        (name for name in experienced_dev_names if name in all_dev_names)
+    )
+    non_experienced_dev_names = all_dev_names - valid_experienced_dev_names
+    
+    best_attempt = None
+    best_assigned_count = 0
+    
+    for attempt in range(max_retries):
+        # Create a deep copy for this attempt
+        devs_copy = deepcopy(devs)
+        
+        # Try allocation
+        try:
+            run_reviewer_allocation_algorithm(devs_copy)
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed with error: {e}")
+            continue
+        
+        # Count how many non-exp devs are assigned
+        assigned_count = sum(
+            1 for dev in devs_copy
+            if dev.name in non_experienced_dev_names
+            and len(dev.review_for) > 0
+        )
+        
+        # Track best attempt
+        if assigned_count > best_assigned_count:
+            best_assigned_count = assigned_count
+            best_attempt = devs_copy
+        
+        # If all non-exp devs are assigned, we're done!
+        if assigned_count == len(non_experienced_dev_names):
+            print(f"\n✅ Success on attempt {attempt + 1}: All {assigned_count} "
+                  f"non-exp devs assigned!")
+            # Copy results back to original devs list
+            for i, dev in enumerate(devs):
+                dev.reviewer_names = devs_copy[i].reviewer_names
+                dev.review_for = devs_copy[i].review_for
+            return
+        
+        # Not perfect, try again with different random seed
+        if attempt < max_retries - 1:
+            # Change random seed for next attempt
+            random.seed(attempt + 1000)
+    
+    # If we get here, use best attempt
+    if best_attempt:
+        print(f"\n⚠️  After {max_retries} attempts, best result: "
+              f"{best_assigned_count}/{len(non_experienced_dev_names)} non-exp devs assigned")
+        # Copy results back to original devs list
+        for i, dev in enumerate(devs):
+            dev.reviewer_names = best_attempt[i].reviewer_names
+            dev.review_for = best_attempt[i].review_for
+    else:
+        raise RuntimeError(f"All {max_retries} allocation attempts failed!")
 
 
 def write_reviewers_to_sheet(
