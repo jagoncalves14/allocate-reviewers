@@ -444,6 +444,35 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
     else:
         print("✅ All non-experienced developers already assigned")
 
+    # LOAD BALANCING SUMMARY
+    print("\n" + "=" * 60)
+    print("📊 Load Balancing Summary")
+    print("=" * 60)
+    
+    # Count how many times each developer is assigned as a reviewer
+    reviewer_assignment_count = {}
+    for dev in devs:
+        for reviewer_name in dev.reviewer_names:
+            reviewer_assignment_count[reviewer_name] = \
+                reviewer_assignment_count.get(reviewer_name, 0) + 1
+    
+    total_assignments = sum(reviewer_assignment_count.values())
+    print(f"Total reviewer assignments: {total_assignments}")
+    print(f"Developers: {len(devs)}")
+    avg_assignments = total_assignments / len(devs) if devs else 0
+    print(f"Average assignments per developer: {avg_assignments:.2f}")
+    print()
+    print("Assignments per developer (sorted by count):")
+    for dev_name, count in sorted(
+        reviewer_assignment_count.items(), 
+        key=lambda x: (-x[1], x[0])
+    ):
+        dev = next(d for d in devs if d.name == dev_name)
+        is_exp = dev.name in valid_experienced_dev_names
+        exp_label = "👷" if is_exp else "👨‍🎓"
+        print(f"   {exp_label} {dev_name}: {count} assignment(s)")
+    print()
+
     # FINAL SUMMARY
     print("\n" + "=" * 60)
     print("FINAL ALLOCATION SUMMARY")
