@@ -25,12 +25,14 @@ from tests.conftest import SHEET
 from tests.utils import mutate_devs
 
 
-@patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAME": "S"})
+@patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"})
 @patch("lib.utilities.ServiceAccountCredentials")
 @patch("lib.utilities.gspread")
 def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) -> None:
     mocked_credential = Mock(spec=ServiceAccountCredentials)
-    mocked_service_account.from_json_keyfile_name.return_value = mocked_credential
+    mocked_service_account.from_json_keyfile_name.return_value = (
+        mocked_credential
+    )
 
     mocked_client = Mock()
     mocked_gspread.authorize.return_value = mocked_client
@@ -38,7 +40,7 @@ def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) ->
     mocked_spreadsheet = Mock(spec=Spreadsheet)
     mocked_client.open.return_value = mocked_spreadsheet
 
-    with get_remote_sheet(DEVS_SHEET) as sheet:
+    with get_remote_sheet(DEVS_SHEET) as _:
         mocked_service_account.from_json_keyfile_name.assert_called_once_with(
             "credential_file.json", DRIVE_SCOPE
         )
@@ -99,4 +101,7 @@ def test_write_exception_to_sheet(
 
     write_exception_to_sheet(headers, "Awesome error!")
 
-    mocked_sheet.insert_cols.assert_called_once_with(new_column, expected_start_column)
+    mocked_sheet.insert_cols.assert_called_once_with(
+        new_column,
+        expected_start_column
+    )

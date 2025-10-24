@@ -89,13 +89,13 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# pylint: disable=wrong-import-position
 from dotenv import find_dotenv, load_dotenv
-
-from lib.data_types import Developer, SelectableConfigure
-from lib.env_constants import (
+from lib.data_types import Developer, SelectableConfigure  # noqa: E402
+from lib.env_constants import (  # noqa: E402
     EXPECTED_HEADERS_FOR_ALLOCATION,
 )
-from lib.utilities import (
+from lib.utilities import (  # noqa: E402
     load_developers_from_sheet,
     get_remote_sheet,
     update_current_sprint_reviewers,

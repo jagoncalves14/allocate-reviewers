@@ -15,7 +15,7 @@ Environment Variables:
                  Front End - Code Reviewers
                  Backend - Code Reviewers
                  Mobile - Code Reviewers
-    
+
     SHEET_NAME: Fallback to single sheet if SHEET_NAMES not set
 
 Exit Codes:
@@ -32,7 +32,8 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib.env_constants import get_sheet_names
+# pylint: disable=wrong-import-position
+from lib.env_constants import get_sheet_names  # noqa: E402
 
 
 def run_devs_rotation_for_sheet(
@@ -51,7 +52,7 @@ def run_devs_rotation_for_sheet(
     print("\n" + "=" * 80)
     print(f"📋 Processing Individual Developers Rotation: {sheet_name}")
     print("=" * 80 + "\n")
-    
+
     try:
         # Import here to avoid conflicts
         from lib.config_loader import load_config_from_sheet
@@ -65,7 +66,7 @@ def run_devs_rotation_for_sheet(
             write_reviewers_to_sheet,
         )
         from lib import env_constants
-        
+
         # Load configuration from this sheet's Config tab
         default_reviewer_number, exp_dev_names = (
             load_config_from_sheet(sheet_name)
@@ -102,11 +103,11 @@ def run_devs_rotation_for_sheet(
                     os.environ["SHEET_NAME"] = original_sheet_name
                 else:
                     os.environ.pop("SHEET_NAME", None)
-        
+
         print(f"✅ Successfully processed: {sheet_name}\n")
         return True
-        
-    except Exception as exc:
+
+    except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-except
         print(f"❌ Error processing {sheet_name}: {exc}")
         traceback.print_exc()
         return False
@@ -128,7 +129,7 @@ def run_teams_rotation_for_sheet(
     print("\n" + "=" * 80)
     print(f"👥 Processing Teams Rotation: {sheet_name}")
     print("=" * 80 + "\n")
-    
+
     try:
         # Import here to avoid conflicts
         from lib.config_loader import load_config_from_sheet
@@ -144,11 +145,11 @@ def run_teams_rotation_for_sheet(
         )
         from lib.data_types import Developer
         from scripts.rotate_team_reviewers import (
-            allocate_team_reviewers,
-            write_team_reviewers_to_sheet,
+            assign_team_reviewers,
+            write_reviewers_to_sheet as write_team_reviewers_to_sheet,
         )
         from lib import env_constants
-        
+
         # Load configuration from this sheet's Config tab
         default_reviewer_number, exp_dev_names = (
             load_config_from_sheet(sheet_name)
@@ -162,9 +163,10 @@ def run_teams_rotation_for_sheet(
             values_mapper=lambda record: Developer(
                 name=record[TEAM_HEADER],
                 reviewer_number=int(
-                    record[TEAM_REVIEWER_NUMBER_HEADER] or default_reviewer_number
+                    record[TEAM_REVIEWER_NUMBER_HEADER]
+                    or default_reviewer_number
                 ),
-                team_developer_names=set(
+                preferable_reviewer_names=set(
                     name.strip()
                     for name in record[TEAM_DEVELOPERS_HEADER].split(",")
                     if name.strip()
@@ -177,7 +179,7 @@ def run_teams_rotation_for_sheet(
         )
 
         # Allocate reviewers
-        allocate_team_reviewers(teams, exp_dev_names)
+        assign_team_reviewers(teams)
 
         # Write results (manual vs scheduled)
         if is_manual:
@@ -189,7 +191,7 @@ def run_teams_rotation_for_sheet(
             )
         else:
             print("Scheduled run: Creating new rotation column")
-            # Need to temporarily set SHEET_NAME for write_team_reviewers_to_sheet
+            # Temporarily set SHEET_NAME for write_team_reviewers_to_sheet
             original_sheet_name = os.environ.get("SHEET_NAME")
             os.environ["SHEET_NAME"] = sheet_name
             try:
@@ -199,11 +201,11 @@ def run_teams_rotation_for_sheet(
                     os.environ["SHEET_NAME"] = original_sheet_name
                 else:
                     os.environ.pop("SHEET_NAME", None)
-        
+
         print(f"✅ Successfully processed: {sheet_name}\n")
         return True
-        
-    except Exception as exc:
+
+    except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-except
         print(f"❌ Error processing {sheet_name}: {exc}")
         traceback.print_exc()
         return False
@@ -225,7 +227,7 @@ def main() -> None:
         help="Run as manual execution (updates existing column)",
     )
     args = parser.parse_args()
-    
+
     # Get list of sheets to process
     sheet_names = get_sheet_names()
 
@@ -301,4 +303,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

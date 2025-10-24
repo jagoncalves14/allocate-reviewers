@@ -56,14 +56,15 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib.utilities import (
+# pylint: disable=wrong-import-position
+from lib.utilities import (  # noqa: E402
     get_remote_sheet,
     load_developers_from_sheet,
     column_number_to_letter,
     update_current_team_rotation,
 )
-from lib.data_types import Developer
-from lib.env_constants import (
+from lib.data_types import Developer  # noqa: E402
+from lib.env_constants import (  # noqa: E402
     EXPECTED_HEADERS_FOR_ROTATION,
     TEAM_HEADER,
     TEAMS_SHEET,
