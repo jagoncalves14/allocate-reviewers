@@ -20,6 +20,26 @@ from lib.env_constants import (
 
 load_dotenv(find_dotenv())
 
+# Global API call counter
+_api_call_count = 0
+
+
+def increment_api_call_count(count: int = 1) -> None:
+    """Increment the global API call counter."""
+    global _api_call_count
+    _api_call_count += count
+
+
+def get_api_call_count() -> int:
+    """Get the current API call count."""
+    return _api_call_count
+
+
+def reset_api_call_count() -> None:
+    """Reset the API call counter to 0."""
+    global _api_call_count
+    _api_call_count = 0
+
 
 def column_number_to_letter(col_num: int) -> str:
     """Convert column number to Excel-style letter (1=A, 27=AA, etc.)"""
@@ -66,6 +86,7 @@ def format_column(
             },
         },
     )
+    increment_api_call_count()  # 1 API call
 
     # Format data rows (row 2 onwards)
     if num_rows > 1:
@@ -79,6 +100,7 @@ def format_column(
                 }
             },
         )
+        increment_api_call_count()  # 1 API call
 
 
 def format_current_date_column(
@@ -325,6 +347,7 @@ def format_and_resize_columns(
 
         # Single batch_update call for ALL operations
         sheet.spreadsheet.batch_update({"requests": requests})
+        increment_api_call_count()  # 1 API call (batch_update)
 
     except Exception as e:  # noqa: BLE001
         print(f"Note: Column formatting/resizing skipped: {e}")
@@ -348,6 +371,7 @@ def load_developers_from_sheet(
 ) -> List[Developer]:
     with get_remote_sheet(sheet_index, sheet_name) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
+        increment_api_call_count()  # 1 API call (get_all_records)
 
     input_developers = map(
         values_mapper,
@@ -437,6 +461,7 @@ def update_current_sprint_reviewers(
 
         # Update the column
         records = sheet.get_all_records(expected_headers=expected_headers)
+        increment_api_call_count()  # 1 API call (get_all_records)
 
         # Build column data array (header + all rows)
         column_data = [[new_header]]
@@ -451,6 +476,7 @@ def update_current_sprint_reviewers(
         col_letter = column_number_to_letter(column_index)
         num_rows = len(records) + 1
         sheet.update(f"{col_letter}1:{col_letter}{num_rows}", column_data)
+        increment_api_call_count()  # 1 API call (update)
 
         # Format and resize columns
         format_and_resize_columns(sheet, column_index, num_rows)
@@ -503,6 +529,7 @@ def update_current_team_rotation(
 
         # Update the columns
         records = sheet.get_all_records(expected_headers=expected_headers)
+        increment_api_call_count()  # 1 API call (get_all_records)
 
         # Build column data array (header + all rows)
         column_data = [[new_header]]
@@ -515,6 +542,7 @@ def update_current_team_rotation(
         col_letter = column_number_to_letter(column_index)
         num_rows = len(records) + 1
         sheet.update(f"{col_letter}1:{col_letter}{num_rows}", column_data)
+        increment_api_call_count()  # 1 API call (update)
 
         # Format and resize columns
         format_and_resize_columns(sheet, column_index, num_rows)

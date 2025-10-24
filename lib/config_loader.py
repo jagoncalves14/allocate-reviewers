@@ -7,7 +7,7 @@ eliminating the need for GitHub Secrets.
 """
 from typing import Tuple, Set
 
-from lib.utilities import get_remote_sheet
+from lib.utilities import get_remote_sheet, increment_api_call_count
 from lib.env_constants import CONFIG_SHEET
 
 
@@ -33,6 +33,7 @@ def load_config_from_sheet(
         with get_remote_sheet(CONFIG_SHEET, sheet_name) as sheet:
             # Get all values from the sheet
             all_values = sheet.get_all_values()
+            increment_api_call_count()  # 1 API call (get_all_values)
 
             # If sheet is empty or has only headers, use defaults
             # (will be caught by except block and return defaults)

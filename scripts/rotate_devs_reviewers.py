@@ -100,6 +100,9 @@ from lib.utilities import (  # noqa: E402
     get_remote_sheet,
     update_current_sprint_reviewers,
     format_and_resize_columns,
+    increment_api_call_count,
+    get_api_call_count,
+    reset_api_call_count,
 )
 
 load_dotenv(find_dotenv())
@@ -562,6 +565,7 @@ def write_reviewers_to_sheet(
         records = sheet.get_all_records(
             expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION
         )
+        increment_api_call_count()  # 1 API call (get_all_records)
         for record in records:
             developer = next(
                 (dev for dev in devs if dev.name == record["Developer"]), None
@@ -578,6 +582,7 @@ def write_reviewers_to_sheet(
                 reviewer_names = ", ".join(sorted(developer.reviewer_names))
                 new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
+        increment_api_call_count()  # 1 API call (insert_cols)
 
         # Format and resize columns
         num_rows = len(records) + 1
@@ -586,6 +591,9 @@ def write_reviewers_to_sheet(
 
 if __name__ == "__main__":
     try:
+        # Reset API call counter at start
+        reset_api_call_count()
+        
         # Load configuration from Config sheet
         from lib.config_loader import load_config_from_sheet
         from lib import env_constants
@@ -605,6 +613,11 @@ if __name__ == "__main__":
         else:
             print("Scheduled run: Creating new sprint column")
             write_reviewers_to_sheet(developers)
+        
+        # Print total API calls at the end
+        total_api_calls = get_api_call_count()
+        print(f"\n📊 Total Google Sheets API calls: {total_api_calls}")
+        
     except Exception as exc:
         print(f"\n❌ Error during Individual Developers rotation: {exc}")
         traceback.print_exc()
