@@ -208,7 +208,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
 def write_reviewers_to_sheet(teams: List[Developer]) -> None:
     # For Teams, we don't use the Indexes column anymore
     # Just insert the reviewers column after "Number of Reviewers"
-    column_index = len(EXPECTED_HEADERS_FOR_ROTATION)
+    column_index = len(EXPECTED_HEADERS_FOR_ROTATION) + 1
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
