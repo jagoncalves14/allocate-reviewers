@@ -33,7 +33,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: disable=wrong-import-position
+# pylint: next-line: disable=wrong-import-position
 from lib.env_constants import (  # noqa: E402
     get_sheet_names,
     API_RATE_LIMIT_DELAY,
@@ -234,6 +234,15 @@ def run_teams_rotation_for_sheet(
             return True
 
         except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-except
+            # Check if Teams sheet doesn't exist (optional sheet)
+            exc_type = type(exc).__name__
+            if "WorksheetNotFound" in exc_type or "index 2" in str(exc):
+                print(
+                    f"ℹ️  No Teams sheet found in {sheet_name} - "
+                    f"skipping Teams rotation"
+                )
+                return True  # Not an error, just skip
+
             # Check if it's a rate limit error
             error_msg = str(exc)
             if "429" in error_msg or "RATE_LIMIT_EXCEEDED" in error_msg:
@@ -310,7 +319,7 @@ def main() -> None:
                 results["devs_success"] += 1
             else:
                 results["devs_failed"] += 1
-            
+
             # Add delay after devs rotation to avoid rate limits
             # Google Sheets API: 60 write requests per minute
             if args.type == "all" or (i < len(sheet_names) - 1):
@@ -326,7 +335,7 @@ def main() -> None:
                 results["teams_success"] += 1
             else:
                 results["teams_failed"] += 1
-            
+
             # Add delay after teams rotation to avoid rate limits
             if i < len(sheet_names) - 1:
                 print(

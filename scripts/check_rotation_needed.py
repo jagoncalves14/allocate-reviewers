@@ -16,7 +16,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: disable=wrong-import-position
+# pylint: next-line: disable=wrong-import-position
 from lib.env_constants import (  # noqa: E402
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,

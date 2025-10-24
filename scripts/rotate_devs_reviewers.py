@@ -89,7 +89,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: disable=wrong-import-position
+# pylint: next-line: disable=wrong-import-position
 from dotenv import find_dotenv, load_dotenv
 from lib.data_types import Developer, SelectableConfigure  # noqa: E402
 from lib.env_constants import (  # noqa: E402
@@ -131,6 +131,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     Assign reviewers to input developers.
     The function mutate directly the input argument "devs".
     """
+    # pylint: next-line: disable=import-outside-toplevel
     from lib.env_constants import EXPERIENCED_DEV_NAMES
     
     experienced_dev_names = set(EXPERIENCED_DEV_NAMES)
@@ -145,8 +146,8 @@ def allocate_reviewers(devs: List[Developer]) -> None:
     print(f"\n📊 Developer Classification:")
     print(f"   Names in FE Developers sheet: {sorted(all_dev_names)}")
     print(f"   Names from EXPERIENCED_DEV_NAMES env: {sorted(experienced_dev_names)}")
-    print(f"   ✅ Matched (Experienced): {sorted(valid_experienced_dev_names)}")
-    print(f"   ❌ Non-experienced: {sorted(non_experienced_dev_names)}")
+    print(f"   ✅ 👷 Matched (Experienced): {sorted(valid_experienced_dev_names)}")
+    print(f"   ✅ 👨‍🎓 Non-experienced: {sorted(non_experienced_dev_names)}")
     
     # Show mismatches
     unmatched_from_config = experienced_dev_names - all_dev_names
@@ -165,7 +166,7 @@ def allocate_reviewers(devs: List[Developer]) -> None:
         reviewer_number = min(dev.reviewer_number, len(all_dev_names) - 1)
         is_experienced_dev = dev.name in valid_experienced_dev_names
         
-        exp_label = "👨‍💼 Experienced" if is_experienced_dev else "👨‍🎓 Non-experienced"
+        exp_label = "👷 Experienced" if is_experienced_dev else "👨‍🎓 Non-experienced"
         print(f"🔄 Processing {dev.name} ({exp_label}, needs {reviewer_number} reviewers)")
         
         # Track non-experienced devs for filtering

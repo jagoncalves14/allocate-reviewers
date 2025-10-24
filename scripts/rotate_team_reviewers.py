@@ -56,7 +56,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: disable=wrong-import-position
+# pylint: next-line: disable=wrong-import-position
 from lib.utilities import (  # noqa: E402
     get_remote_sheet,
     load_developers_from_sheet,
@@ -98,6 +98,7 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     - Tracks how many teams each developer is reviewing ACROSS ALL TEAMS
     - Prioritizes developers with fewer assignments for fairness
     """
+    # pylint: next-line: disable=import-outside-toplevel
     import random
     from lib.env_constants import EXPERIENCED_DEV_NAMES  # noqa: F811
 
