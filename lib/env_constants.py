@@ -66,3 +66,10 @@ EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 # Default values (can be overridden by config sheet)
 DEFAULT_REVIEWER_NUMBER = 1  # Fallback if config sheet is missing
 EXPERIENCED_DEV_NAMES = set()  # Fallback if config sheet is missing
+
+# API Rate Limiting
+# Google Sheets API allows 60 write requests per minute per user
+# Each sheet operation can make multiple write requests (insert, format, etc.)
+# So we define a delay that is enough to avoid rate limits. Whenever a rate limit
+# is hit, we wait for the delay below and then retry the operation.
+API_RATE_LIMIT_DELAY = 70  # seconds - Conservative + extra buffer
