@@ -313,12 +313,18 @@ def write_reviewers_to_sheet(devs: List[Developer]) -> None:
         )
         for record in records:
             developer = next(
-                dev for dev in devs if dev.name == record["Developer"]
+                (dev for dev in devs if dev.name == record["Developer"]),
+                None
             )
-            reviewer_names = ", ".join(
-                sorted(developer.reviewer_names)
-            )
-            new_column.append(reviewer_names)
+            if developer is None:
+                # Developer exists in sheet but wasn't processed (maybe removed from config)
+                print(f"   ⚠️  WARNING: Developer '{record['Developer']}' in sheet but not in processed list - skipping")
+                new_column.append("")
+            else:
+                reviewer_names = ", ".join(
+                    sorted(developer.reviewer_names)
+                )
+                new_column.append(reviewer_names)
         sheet.insert_cols([new_column], column_index)
 
         # Format and resize columns
