@@ -108,7 +108,7 @@ jobs:
           steps.check_rotation.outputs.rotation_needed == 'true' &&
           success()
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
