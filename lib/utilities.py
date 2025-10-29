@@ -1,21 +1,21 @@
 import os
 from contextlib import contextmanager
-from typing import List, Callable
 from datetime import datetime
+from typing import Callable, List
 
 import gspread
+from dotenv import find_dotenv, load_dotenv
 from gspread import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import find_dotenv, load_dotenv
 
 from lib.data_types import Developer
 from lib.env_constants import (
-    DRIVE_SCOPE,
-    DEVELOPER_HEADER,
-    REVIEWER_NUMBER_HEADER,
     DEFAULT_REVIEWER_NUMBER,
-    PREFERABLE_REVIEWER_HEADER,
+    DEVELOPER_HEADER,
     DEVS_SHEET,
+    DRIVE_SCOPE,
+    PREFERABLE_REVIEWER_HEADER,
+    REVIEWER_NUMBER_HEADER,
 )
 
 load_dotenv(find_dotenv())
@@ -97,7 +97,7 @@ def format_column(
                 "textFormat": {
                     "foregroundColor": text_color,
                     "bold": bold,
-                }
+                },
             },
         )
         increment_api_call_count()  # 1 API call
@@ -182,44 +182,13 @@ def format_and_resize_columns(
         requests = []
 
         # 1. Format current column header (light blue, bold)
-        requests.append({
-            "repeatCell": {
-                "range": {
-                    "sheetId": sheet.id,
-                    "startRowIndex": 0,
-                    "endRowIndex": 1,
-                    "startColumnIndex": col_idx_0based,
-                    "endColumnIndex": col_idx_0based + 1,
-                },
-                "cell": {
-                    "userEnteredFormat": {
-                        "backgroundColor": {
-                            "red": 0.85,
-                            "green": 0.92,
-                            "blue": 1,
-                        },
-                        "textFormat": {
-                            "foregroundColor": {
-                                "red": 0,
-                                "green": 0,
-                                "blue": 0,
-                            },
-                            "bold": True,
-                        },
-                    }
-                },
-                "fields": "userEnteredFormat(backgroundColor,textFormat)",
-            }
-        })
-
-        # 2. Format current column data rows (light blue, not bold)
-        if num_rows > 1:
-            requests.append({
+        requests.append(
+            {
                 "repeatCell": {
                     "range": {
                         "sheetId": sheet.id,
-                        "startRowIndex": 1,
-                        "endRowIndex": num_rows,
+                        "startRowIndex": 0,
+                        "endRowIndex": 1,
                         "startColumnIndex": col_idx_0based,
                         "endColumnIndex": col_idx_0based + 1,
                     },
@@ -236,13 +205,48 @@ def format_and_resize_columns(
                                     "green": 0,
                                     "blue": 0,
                                 },
-                                "bold": False,
+                                "bold": True,
                             },
                         }
                     },
                     "fields": "userEnteredFormat(backgroundColor,textFormat)",
                 }
-            })
+            }
+        )
+
+        # 2. Format current column data rows (light blue, not bold)
+        if num_rows > 1:
+            requests.append(
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet.id,
+                            "startRowIndex": 1,
+                            "endRowIndex": num_rows,
+                            "startColumnIndex": col_idx_0based,
+                            "endColumnIndex": col_idx_0based + 1,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {
+                                    "red": 0.85,
+                                    "green": 0.92,
+                                    "blue": 1,
+                                },
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0,
+                                        "green": 0,
+                                        "blue": 0,
+                                    },
+                                    "bold": False,
+                                },
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                    }
+                }
+            )
 
         # 3. Format old columns (if they exist)
         if last_col > column_index:
@@ -252,44 +256,13 @@ def format_and_resize_columns(
                 old_col_end_idx = old_col_start_idx + max_cols
 
                 # 3a. Old column header (grey, not bold)
-                requests.append({
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet.id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1,
-                            "startColumnIndex": old_col_start_idx,
-                            "endColumnIndex": old_col_end_idx,
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor": {
-                                    "red": 1,
-                                    "green": 1,
-                                    "blue": 1,
-                                },
-                                "textFormat": {
-                                    "foregroundColor": {
-                                        "red": 0.8,
-                                        "green": 0.8,
-                                        "blue": 0.8,
-                                    },
-                                    "bold": False,
-                                },
-                            }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat)",
-                    }
-                })
-
-                # 3b. Old column data rows (grey, not bold)
-                if num_rows > 1:
-                    requests.append({
+                requests.append(
+                    {
                         "repeatCell": {
                             "range": {
                                 "sheetId": sheet.id,
-                                "startRowIndex": 1,
-                                "endRowIndex": num_rows,
+                                "startRowIndex": 0,
+                                "endRowIndex": 1,
                                 "startColumnIndex": old_col_start_idx,
                                 "endColumnIndex": old_col_end_idx,
                             },
@@ -312,38 +285,77 @@ def format_and_resize_columns(
                             },
                             "fields": "userEnteredFormat(backgroundColor,textFormat)",
                         }
-                    })
+                    }
+                )
+
+                # 3b. Old column data rows (grey, not bold)
+                if num_rows > 1:
+                    requests.append(
+                        {
+                            "repeatCell": {
+                                "range": {
+                                    "sheetId": sheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": num_rows,
+                                    "startColumnIndex": old_col_start_idx,
+                                    "endColumnIndex": old_col_end_idx,
+                                },
+                                "cell": {
+                                    "userEnteredFormat": {
+                                        "backgroundColor": {
+                                            "red": 1,
+                                            "green": 1,
+                                            "blue": 1,
+                                        },
+                                        "textFormat": {
+                                            "foregroundColor": {
+                                                "red": 0.8,
+                                                "green": 0.8,
+                                                "blue": 0.8,
+                                            },
+                                            "bold": False,
+                                        },
+                                    }
+                                },
+                                "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                            }
+                        }
+                    )
 
         # 4. Resize current column (280px)
-        requests.append({
-            "updateDimensionProperties": {
-                "range": {
-                    "sheetId": sheet.id,
-                    "dimension": "COLUMNS",
-                    "startIndex": col_idx_0based,
-                    "endIndex": col_idx_0based + 1,
-                },
-                "properties": {"pixelSize": 280},
-                "fields": "pixelSize",
+        requests.append(
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet.id,
+                        "dimension": "COLUMNS",
+                        "startIndex": col_idx_0based,
+                        "endIndex": col_idx_0based + 1,
+                    },
+                    "properties": {"pixelSize": 280},
+                    "fields": "pixelSize",
+                }
             }
-        })
+        )
 
         # 5. Resize old columns (132px, if they exist)
         if last_col > column_index:
             max_cols = min(num_old_columns_to_style, last_col - column_index)
             if max_cols > 0:
-                requests.append({
-                    "updateDimensionProperties": {
-                        "range": {
-                            "sheetId": sheet.id,
-                            "dimension": "COLUMNS",
-                            "startIndex": col_idx_0based + 1,
-                            "endIndex": col_idx_0based + 1 + max_cols,
-                        },
-                        "properties": {"pixelSize": 132},
-                        "fields": "pixelSize",
+                requests.append(
+                    {
+                        "updateDimensionProperties": {
+                            "range": {
+                                "sheetId": sheet.id,
+                                "dimension": "COLUMNS",
+                                "startIndex": col_idx_0based + 1,
+                                "endIndex": col_idx_0based + 1 + max_cols,
+                            },
+                            "properties": {"pixelSize": 132},
+                            "fields": "pixelSize",
+                        }
                     }
-                })
+                )
 
         # Single batch_update call for ALL operations
         sheet.spreadsheet.batch_update({"requests": requests})
@@ -357,14 +369,12 @@ def load_developers_from_sheet(
     expected_headers: List[str],
     values_mapper: Callable[[dict], Developer] = lambda record: Developer(
         name=record[DEVELOPER_HEADER],
-        reviewer_number=int(
-            record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
+        reviewer_number=int(record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
+        preferable_reviewer_names=(
+            set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
+            if record[PREFERABLE_REVIEWER_HEADER]
+            else set()
         ),
-        preferable_reviewer_names=set(
-            (record[PREFERABLE_REVIEWER_HEADER]).split(", ")
-        )
-        if record[PREFERABLE_REVIEWER_HEADER]
-        else set(),
     ),
     sheet_index: int = DEVS_SHEET,
     sheet_name: str | None = None,
@@ -400,6 +410,7 @@ def get_remote_sheet(
     # Use provided sheet_name or fall back to first sheet in SHEET_NAMES
     if sheet_name is None:
         from lib.env_constants import get_sheet_names
+
         sheets = get_sheet_names()
         if sheets:
             sheet_name = sheets[0]
@@ -434,9 +445,7 @@ def update_current_sprint_reviewers(
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (
-            first_row[column_index - 1]
-            if len(first_row) >= column_index
-            else None
+            first_row[column_index - 1] if len(first_row) >= column_index else None
         )
 
         if not current_header:
@@ -500,9 +509,7 @@ def update_current_team_rotation(
         # Get the current header
         first_row = sheet.row_values(1)
         current_header = (
-            first_row[column_index - 1]
-            if len(first_row) >= column_index
-            else None
+            first_row[column_index - 1] if len(first_row) >= column_index else None
         )
 
         if not current_header or current_header.startswith("Exception"):
@@ -516,9 +523,7 @@ def update_current_team_rotation(
         # Extract original rotation date from header
         if " / Manual Run on:" in current_header:
             # Already has manual run info, extract rotation date
-            rotation_date = (
-                current_header.split(" / Manual Run on:")[0].strip()
-            )
+            rotation_date = current_header.split(" / Manual Run on:")[0].strip()
         else:
             # First manual run on this rotation
             rotation_date = current_header

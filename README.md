@@ -78,7 +78,10 @@ Assigns reviewers to teams based on team composition:
 ### ⚙️ Configuration (No longer in secrets!)
 
 - ✨ **Default Number of Reviewers**: Now stored in Config sheet (Cell B2)
-- ✨ **Experienced Developer Names**: Now stored in Config sheet (Column A, from A2 onwards)
+- ✨ **Unexperienced Developer Names**: Now stored in Config sheet (Column A, from A2 onwards)
+  - List only junior developers or developers that are still being onboarded here
+  - Everyone NOT on this list is considered experienced
+  - Empty list = all developers are experienced
 
 This means you can update configuration directly in the Google Sheet without touching GitHub! 🎉
 
@@ -135,12 +138,15 @@ This means you can update configuration directly in the Google Sheet without tou
    
    **Tab 1: Config** (Required to exist, content optional)
    ```
-   A1: Experienced Developers    B1: Default Number of Reviewers
-   A2: Dev2                       B2: 2
-   A3: Dev3
-   A4: Dev4
+   A1: Unexperienced Developers   B1: Default Number of Reviewers
+   A2: Dev1                        B2: 2
+   A3: Dev11
+   A4: Dev12
    ...
    ```
+   **Note:** - List only junior developers or developers that are still being onboarded here.
+   Everyone NOT on this list is considered experienced.
+   Empty list = all developers are experienced (safe default).
    
    **Tab 2: Individual Developers** (Required with content)
    ```
@@ -339,7 +345,7 @@ Two additional workflows are available for **manual execution only** (no cron):
    
    ✨ **No longer needed as secrets:**
    - ~~`DEFAULT_REVIEWER_NUMBER`~~ → Now in Config sheet (Cell B2)
-   - ~~`EXPERIENCED_DEV_NAMES`~~ → Now in Config sheet (Column A)
+   - ~~`EXPERIENCED_DEV_NAMES`~~ → Now in Config sheet (Column A, but INVERTED: list unexperienced devs)
 
 4. **Manual Triggers:**
    
@@ -367,10 +373,11 @@ Your Google Sheet should have **at least two sheet tabs**:
 - **This sheet MUST exist** (to keep indices consistent across all sheets)
 - **Content is optional** - can be completely empty, the system will use defaults
 - **Recommended structure** (if you want to customize):
-  - Header row (row 1): "Experienced Developers" in A1, "Default Number of Reviewers" in B1
-  - Column A (A2+): List of experienced developer names (one per row)
+  - Header row (row 1): "Unexperienced Developers" in A1, "Default Number of Reviewers" in B1
+  - Column A (A2+): List of **unexperienced/junior** developer names (one per row)
+  - **INVERTED LOGIC**: Everyone NOT on this list is considered experienced
   - Column B2: Default number of reviewers (e.g., "2")
-- **If columns are missing or empty** → Uses defaults: `reviewer_number=1`, `experienced_devs=empty`
+- **If columns are missing or empty** → Uses defaults: `reviewer_number=1`, `unexperienced_devs=empty` (all experienced)
 - **Minimum requirement**: Just create an empty sheet named "Config" (or any name)
 
 **Second Sheet (index 1)** - Individual developers ✅ **Required**

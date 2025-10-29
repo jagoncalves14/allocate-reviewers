@@ -9,6 +9,7 @@ DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 
+
 def get_sheet_names() -> list[str]:
     """
     Parse sheet names from SHEET_NAMES environment variable.
@@ -21,11 +22,7 @@ def get_sheet_names() -> list[str]:
 
     if sheet_names_env:
         # Parse multiline format (works for single or multiple sheets)
-        names = [
-            name.strip()
-            for name in sheet_names_env.split("\n")
-            if name.strip()
-        ]
+        names = [name.strip() for name in sheet_names_env.split("\n") if name.strip()]
         return names
 
     return []
@@ -65,7 +62,7 @@ EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 
 # Default values (can be overridden by config sheet)
 DEFAULT_REVIEWER_NUMBER = 1  # Fallback if config sheet is missing
-EXPERIENCED_DEV_NAMES = set()  # Fallback if config sheet is missing
+UNEXPERIENCED_DEV_NAMES = set()  # Fallback: empty = all are experienced
 
 # API Rate Limiting
 # Google Sheets API allows 60 write requests per minute per user

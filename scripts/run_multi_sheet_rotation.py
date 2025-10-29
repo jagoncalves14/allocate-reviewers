@@ -24,20 +24,17 @@ Exit Codes:
     2: Total failure (all sheets failed or no sheets configured)
 """
 
-import sys
 import argparse
-import traceback
+import sys
 import time
+import traceback
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # pylint: next-line: disable=wrong-import-position
-from lib.env_constants import (  # noqa: E402
-    get_sheet_names,
-    API_RATE_LIMIT_DELAY,
-)
+from lib.env_constants import API_RATE_LIMIT_DELAY, get_sheet_names  # noqa: E402
 
 
 def run_devs_rotation_for_sheet(
@@ -61,17 +58,17 @@ def run_devs_rotation_for_sheet(
     for attempt in range(max_retries):
         try:
             # Import here to avoid conflicts
+            from lib import env_constants
             from lib.config_loader import load_config_from_sheet
+            from lib.env_constants import EXPECTED_HEADERS_FOR_ALLOCATION
             from lib.utilities import (
                 load_developers_from_sheet,
                 update_current_sprint_reviewers,
             )
-            from lib.env_constants import EXPECTED_HEADERS_FOR_ALLOCATION
             from scripts.rotate_devs_reviewers import (
                 allocate_reviewers,
                 write_reviewers_to_sheet,
             )
-            from lib import env_constants
 
             # Load configuration from this sheet's Config tab
             default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)
@@ -149,23 +146,23 @@ def run_teams_rotation_for_sheet(
     for attempt in range(max_retries):
         try:
             # Import here to avoid conflicts
+            from lib import env_constants
             from lib.config_loader import load_config_from_sheet
+            from lib.data_types import Developer
+            from lib.env_constants import (
+                EXPECTED_HEADERS_FOR_ROTATION,
+                TEAM_DEVELOPERS_HEADER,
+                TEAM_HEADER,
+                TEAM_REVIEWER_NUMBER_HEADER,
+            )
             from lib.utilities import (
                 load_developers_from_sheet,
                 update_current_team_rotation,
             )
-            from lib.env_constants import (
-                EXPECTED_HEADERS_FOR_ROTATION,
-                TEAM_HEADER,
-                TEAM_DEVELOPERS_HEADER,
-                TEAM_REVIEWER_NUMBER_HEADER,
-            )
-            from lib.data_types import Developer
+            from scripts.rotate_team_reviewers import assign_team_reviewers
             from scripts.rotate_team_reviewers import (
-                assign_team_reviewers,
                 write_reviewers_to_sheet as write_team_reviewers_to_sheet,
             )
-            from lib import env_constants
 
             # Load configuration from this sheet's Config tab
             default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)

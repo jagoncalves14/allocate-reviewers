@@ -8,13 +8,6 @@ from freezegun import freeze_time
 from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
-from lib.utilities import (
-    get_remote_sheet,
-    load_developers_from_sheet,
-    format_and_resize_columns,
-    update_current_sprint_reviewers,
-)
 from lib.data_types import Developer
 from lib.env_constants import (
     DEVS_SHEET,
@@ -22,23 +15,24 @@ from lib.env_constants import (
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,
 )
+from lib.utilities import (
+    format_and_resize_columns,
+    get_remote_sheet,
+    load_developers_from_sheet,
+    update_current_sprint_reviewers,
+)
+from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
 from tests.conftest import SHEET
 from tests.utils import mutate_devs
 
 
-@patch.dict(
-    os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"}
-)
+@patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"})
 @patch("lib.utilities.ServiceAccountCredentials")
 @patch("lib.utilities.gspread")
-def test_get_remote_sheet(
-    mocked_gspread: Mock, mocked_service_account: Mock
-) -> None:
+def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) -> None:
     """Test that get_remote_sheet initializes and returns a worksheet."""
     mocked_credential = Mock(spec=ServiceAccountCredentials)
-    mocked_service_account.from_json_keyfile_name.return_value = (
-        mocked_credential
-    )
+    mocked_service_account.from_json_keyfile_name.return_value = mocked_credential
 
     mocked_client = Mock()
     mocked_gspread.authorize.return_value = mocked_client
@@ -128,9 +122,7 @@ def test_format_and_resize_columns_batch_update() -> None:
         "backgroundColor"
     ] == {"red": 0.85, "green": 0.92, "blue": 1}
     assert (
-        requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"][
-            "bold"
-        ]
+        requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"]
         is True
     )
 
@@ -139,9 +131,7 @@ def test_format_and_resize_columns_batch_update() -> None:
         "backgroundColor"
     ] == {"red": 1, "green": 1, "blue": 1}
     assert (
-        requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"][
-            "bold"
-        ]
+        requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"]
         is False
     )
     old_foreground = requests[2]["repeatCell"]["cell"]["userEnteredFormat"][
@@ -196,9 +186,7 @@ def test_update_current_sprint_reviewers_batch_update(
     Verifies NO individual update_cell() calls are made and that
     a single sheet.update() call is used instead for efficiency.
     """
-    with patch(
-        "lib.utilities.get_remote_sheet"
-    ) as mocked_get_remote_sheet:
+    with patch("lib.utilities.get_remote_sheet") as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             # Setup
             mocked_sheet.row_values.return_value = [
@@ -221,8 +209,7 @@ def test_update_current_sprint_reviewers_batch_update(
 
             # Call the function
             update_current_sprint_reviewers(
-                EXPECTED_HEADERS_FOR_ALLOCATION,
-                mocked_devs
+                EXPECTED_HEADERS_FOR_ALLOCATION, mocked_devs
             )
 
             # Should NOT call update_cell at all

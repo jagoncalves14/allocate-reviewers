@@ -49,28 +49,29 @@ NOTE: Uses the SECOND sheet/tab in the Google Sheet (index 1)
 
 import sys
 import traceback
-from typing import List
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: next-line: disable=wrong-import-position
-from lib.utilities import (  # noqa: E402
-    get_remote_sheet,
-    load_developers_from_sheet,
-    format_and_resize_columns,
-    update_current_team_rotation,
-)
 from lib.data_types import Developer  # noqa: E402
 from lib.env_constants import (  # noqa: E402
-    EXPECTED_HEADERS_FOR_ROTATION,
-    TEAM_HEADER,
-    TEAMS_SHEET,
-    TEAM_DEVELOPERS_HEADER,
-    TEAM_REVIEWER_NUMBER_HEADER,
     DEFAULT_REVIEWER_NUMBER,
+    EXPECTED_HEADERS_FOR_ROTATION,
+    TEAM_DEVELOPERS_HEADER,
+    TEAM_HEADER,
+    TEAM_REVIEWER_NUMBER_HEADER,
+    TEAMS_SHEET,
+)
+
+# pylint: next-line: disable=wrong-import-position
+from lib.utilities import (  # noqa: E402
+    format_and_resize_columns,
+    get_remote_sheet,
+    load_developers_from_sheet,
+    update_current_team_rotation,
 )
 
 
@@ -81,7 +82,9 @@ def parse_team_developers(team_developers_str: str) -> set[str]:
     return set(name.strip() for name in team_developers_str.split(","))
 
 
-def assign_team_reviewers(teams: List[Developer]) -> None:
+def assign_team_reviewers(
+    teams: List[Developer], all_developers: List[str] | None = None
+) -> None:
     """
     Assign reviewers to teams based on team composition with load balancing.
 
@@ -100,12 +103,22 @@ def assign_team_reviewers(teams: List[Developer]) -> None:
     """
     # pylint: next-line: disable=import-outside-toplevel
     import random
-    from lib.env_constants import EXPERIENCED_DEV_NAMES  # noqa: F811
 
-    # Get list of experienced developers
-    experienced_devs = list(EXPERIENCED_DEV_NAMES)
-    if not experienced_devs:
-        raise ValueError("EXPERIENCED_DEV_NAMES must be configured")
+    from lib.env_constants import UNEXPERIENCED_DEV_NAMES  # noqa: F811
+
+    # Get list of experienced developers (INVERTED LOGIC)
+    # Build from all team members plus provided all_developers minus unexperienced ones
+    all_dev_names = set()
+    for team in teams:
+        all_dev_names.update(team.preferable_reviewer_names)
+
+    # Add any explicitly provided developers
+    if all_developers:
+        all_dev_names.update(all_developers)
+
+    unexperienced_dev_names = set(UNEXPERIENCED_DEV_NAMES)
+    experienced_dev_names = all_dev_names - unexperienced_dev_names
+    experienced_devs = list(experienced_dev_names)
 
     print(f"\n📊 Team Rotation Summary:")
     print(f"   Teams to process: {len(teams)}")
@@ -249,12 +262,12 @@ if __name__ == "__main__":
 
     try:
         # Load configuration from Config sheet
-        from lib.config_loader import load_config_from_sheet
         from lib import env_constants
+        from lib.config_loader import load_config_from_sheet
 
-        default_reviewer_number, experienced_dev_names = load_config_from_sheet()
+        default_reviewer_number, unexperienced_dev_names = load_config_from_sheet()
         env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
-        env_constants.EXPERIENCED_DEV_NAMES = experienced_dev_names
+        env_constants.UNEXPERIENCED_DEV_NAMES = unexperienced_dev_names
 
         teams = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,

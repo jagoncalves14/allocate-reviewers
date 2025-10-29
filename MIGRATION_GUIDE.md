@@ -110,9 +110,13 @@ D+: Date columns (e.g., 23-10-2025)
 
 **Structure:**
 ```
-A: Experienced Developers (list from A2 onwards)
+A: Unexperienced Developers (list from A2 onwards - INVERTED LOGIC)
 B: Default Number of Reviewers (value in B2)
 ```
+
+**Note:** INVERTED LOGIC - List only junior/unexperienced developers in Column A.
+Everyone NOT on this list is considered experienced.
+Empty list = all developers are experienced (safe default).
 
 ### **Sheet Order Change**
 
@@ -156,22 +160,17 @@ B: Default Number of Reviewers (value in B2)
    - Set up the structure:
 
 ```
-     A                        |  B
-1    Experienced Developers   |  Default Number of Reviewers
-2    Dev2                     |  2
-3    Dev3                     |
-4    Dev4                     |
-5    Dev5                     |
-6    Dev6                     |
-7    Dev7                     |
-8    Dev8                     |
-9    Dev9                     |
-10   Dev10                    |
-11   Dev11                    |
+     A                          |  B
+1    Unexperienced Developers   |  Default Number of Reviewers
+2    Dev1                       |  2
+3    Dev11                      |
+4    Dev12                      |
 ```
 
-**Important:**
-- Column A: List ALL experienced developers (one per row, starting from A2)
+**Important (INVERTED LOGIC):**
+- Column A: List ALL **unexperienced/junior** developers (one per row, starting from A2)
+- **Everyone NOT on this list is considered experienced**
+- Empty list = all developers are experienced (safe default!)
 - Cell B2: Enter the default number of reviewers (e.g., `2`)
 - Names must match **exactly** with names in your other sheets
 
@@ -212,7 +211,7 @@ Click **"Secrets" tab** and delete these 4 secrets:
 
 - ❌ **`SHEET_NAME`** → Now a **Variable** (more visible, easier to edit)
 - ❌ **`DEFAULT_REVIEWER_NUMBER`** → Now in **Config sheet** (Cell B2)
-- ❌ **`EXPERIENCED_DEV_NAMES`** → Now in **Config sheet** (Column A)
+- ❌ **`EXPERIENCED_DEV_NAMES`** → Now in **Config sheet** (Column A, but INVERTED: list unexperienced devs)
 - ❌ **`REVIEWERS_CONFIG_LIST`** → Obsolete (new automatic logic)
 
 **C) Keep This Secret:**
@@ -246,7 +245,7 @@ Variables (1 total):
 
 Config Sheet (in Google Sheets):
 - Default Number of Reviewers
-- Experienced Developer Names
+- Unexperienced Developer Names (INVERTED: list only juniors)
 ```
 
 **Result:** 5 GitHub Secrets → 1 Secret + 1 Variable + Config Sheet 🎉
@@ -345,7 +344,8 @@ poetry run python scripts/rotate_team_reviewers.py
 **Solution:** 
 - Ensure Config sheet is the **first sheet** (index 0)
 - Cell B2 must contain a number (e.g., `2`)
-- Column A must have developer names starting from A2
+- Column A must have **unexperienced/junior** developer names starting from A2
+- Remember: INVERTED LOGIC - list only juniors, everyone else is experienced
 
 ### Wrong sheet order error
 
@@ -403,7 +403,7 @@ If you need to revert to the old system:
 3. **Delete the Config sheet**
 4. **Re-add GitHub Secrets:**
    - `DEFAULT_REVIEWER_NUMBER=2`
-   - `EXPERIENCED_DEV_NAMES=Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10, Dev11`
+   - `EXPERIENCED_DEV_NAMES=Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10, Dev11` (OLD LOGIC - not inverted)
    - `REVIEWERS_CONFIG_LIST=` (if you were using the old index-based system)
 5. **Revert code changes:**
    ```bash
@@ -424,7 +424,7 @@ Use this checklist to ensure you've completed all steps:
 - [ ] Renamed `Reviewer Number` → `Number of Reviewers` in Teams sheet
 - [ ] Deleted `Indexes` column from Teams sheet
 - [ ] Created new Config sheet with proper structure
-- [ ] Added experienced developer names to Config sheet (Column A, from A2)
+- [ ] Added **unexperienced/junior** developer names to Config sheet (Column A, from A2) - INVERTED LOGIC
 - [ ] Added default reviewer number to Config sheet (Cell B2)
 - [ ] Reordered sheets: Config (1st), Individual Developers (2nd), Teams (3rd)
 
@@ -433,7 +433,7 @@ Use this checklist to ensure you've completed all steps:
 - [ ] Kept `GOOGLE_CREDENTIALS_JSON` **Secret** (only secret needed)
 - [ ] Deleted `SHEET_NAME` secret (moved to Variable)
 - [ ] Deleted `DEFAULT_REVIEWER_NUMBER` secret (moved to Config sheet)
-- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret (moved to Config sheet)
+- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret (moved to Config sheet, but INVERTED: list unexperienced devs)
 - [ ] Deleted `REVIEWERS_CONFIG_LIST` secret (obsolete)
 
 **Testing:**
@@ -566,8 +566,8 @@ If you need custom logic, you would need to modify `scripts/rotate_team_reviewer
 - **Config Sheet (index 0)** - ✅ **Must exist, but content is optional**
   - **The sheet itself MUST exist** (to keep indices consistent)
   - **Content is completely optional** - can be blank/empty
-  - If empty or columns missing: Uses defaults (reviewer_number=1, experienced_devs=empty)
-  - If populated: Loads your custom configuration
+  - If empty or columns missing: Uses defaults (reviewer_number=1, unexperienced_devs=empty → all experienced)
+  - If populated: Loads your custom configuration with INVERTED LOGIC (list only juniors)
   - **Why required?** So Individual Developers is always at index 1, Teams at index 2
 
 - **Individual Developers (index 1)** - ✅ **Required with content**

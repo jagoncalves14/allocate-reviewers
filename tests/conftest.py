@@ -38,9 +38,7 @@ SHEET = [
 ]
 
 DEVS = [
-    Developer(
-        name="A", reviewer_number=1, preferable_reviewer_names=set(("B", "C"))
-    ),
+    Developer(name="A", reviewer_number=1, preferable_reviewer_names=set(("B", "C"))),
     Developer(name="B", reviewer_number=2, preferable_reviewer_names=set()),
     Developer(name="C", reviewer_number=3, preferable_reviewer_names=set()),
     Developer(name="D", reviewer_number=3, preferable_reviewer_names=set()),

@@ -5,15 +5,14 @@ Loads configuration from the Config sheet (first sheet in Google Sheets).
 This allows all configuration to be managed directly in the sheet,
 eliminating the need for GitHub Secrets.
 """
-from typing import Tuple, Set
 
-from lib.utilities import get_remote_sheet, increment_api_call_count
+from typing import Set, Tuple
+
 from lib.env_constants import CONFIG_SHEET
+from lib.utilities import get_remote_sheet, increment_api_call_count
 
 
-def load_config_from_sheet(
-    sheet_name: str | None = None
-) -> Tuple[int, Set[str]]:
+def load_config_from_sheet(sheet_name: str | None = None) -> Tuple[int, Set[str]]:
     """
     Load configuration from the Config sheet (index 0).
 
@@ -22,12 +21,14 @@ def load_config_from_sheet(
             If None, uses SHEET_NAME from environment variable.
 
     Expected format:
-    - Column A: "Experienced Developers" with names listed below
+    - Column A: "Unexperienced Developers" with names listed below
     - Column B: "Default Number of Reviewers" with number in B2
 
     Returns:
-        Tuple of (default_reviewer_number, experienced_dev_names)
+        Tuple of (default_reviewer_number, unexperienced_dev_names)
         Falls back to defaults if Config sheet is missing or invalid
+
+    Note: Developers NOT on this list are experienced.
     """
     try:
         with get_remote_sheet(CONFIG_SHEET, sheet_name) as sheet:
@@ -45,7 +46,7 @@ def load_config_from_sheet(
 
             # Default values
             default_reviewer_number = 1
-            experienced_devs = set()
+            unexperienced_devs = set()
 
             # Read Default Number of Reviewers from B2
             try:
@@ -57,35 +58,35 @@ def load_config_from_sheet(
                     "from B2, using default: 1"
                 )
 
-            # Read Experienced Developers from column A (row 2 onwards)
+            # Read Unexperienced Developers from column A (row 2 onwards)
             for i in range(1, len(all_values)):  # Skip header row
                 if all_values[i] and all_values[i][0]:  # If cell A has content
                     name = all_values[i][0].strip()
                     # Skip header
-                    if name and name != "Experienced Developers":
-                        experienced_devs.add(name)
+                    if name and name != "Unexperienced Developers":
+                        unexperienced_devs.add(name)
 
-            if not experienced_devs:
+            if not unexperienced_devs:
                 print(
-                    "Warning: No experienced developers found in Config "
-                    "sheet. All developers will be treated as "
-                    "non-experienced."
+                    "Info: No unexperienced developers found in Config "
+                    "sheet. All developers will be treated as experienced."
                 )
 
             print(
                 f"Config loaded: Default reviewers="
                 f"{default_reviewer_number}, "
-                f"Experienced devs={len(experienced_devs)}"
+                f"Unexperienced devs={len(unexperienced_devs)}"
             )
 
-            if experienced_devs:
-                print(f"   Names from Config sheet: {sorted(experienced_devs)}")
+            if unexperienced_devs:
+                print(f"   Names from Config sheet: {sorted(unexperienced_devs)}")
 
-            return default_reviewer_number, experienced_devs
+            return default_reviewer_number, unexperienced_devs
 
     except Exception as e:  # noqa: BLE001
         print(
             f"Warning: Could not load Config sheet: {e}\n"
-            "Using defaults: reviewer_number=1, experienced_devs=empty"
+            "Using defaults: reviewer_number=1, unexperienced_devs=empty "
+            "(all developers treated as experienced)"
         )
         return 1, set()

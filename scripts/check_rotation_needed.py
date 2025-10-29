@@ -4,9 +4,10 @@ in the Google Sheet.
 Exit code 0: Rotation needed (15+ days since last rotation)
 Exit code 1: Rotation not needed yet
 """
+
+import argparse
 import os
 import sys
-import argparse
 from datetime import datetime
 from pathlib import Path
 
@@ -62,7 +63,7 @@ def get_last_rotation_date(
         first_row = sheet.row_values(1)
 
         # Skip the first N columns (before date columns)
-        date_columns = first_row[len(expected_headers):]
+        date_columns = first_row[len(expected_headers) :]
 
         if not date_columns:
             print("No previous rotations found in the sheet")
@@ -74,9 +75,7 @@ def get_last_rotation_date(
         # Check if it's a manual run header
         if " / Manual Run on:" in last_date_str:
             # Extract the sprint date (before " / Manual Run on:")
-            sprint_date_str = (
-                last_date_str.split(" / Manual Run on:")[0].strip()
-            )
+            sprint_date_str = last_date_str.split(" / Manual Run on:")[0].strip()
             try:
                 last_date = datetime.strptime(sprint_date_str, "%d-%m-%Y")
                 print(
@@ -85,19 +84,13 @@ def get_last_rotation_date(
                 )
                 return last_date
             except ValueError:
-                print(
-                    f"Warning: Could not parse sprint date "
-                    f"'{sprint_date_str}'"
-                )
+                print(f"Warning: Could not parse sprint date " f"'{sprint_date_str}'")
                 return None
         else:
             # Regular scheduled run
             try:
                 last_date = datetime.strptime(last_date_str, "%d-%m-%Y")
-                print(
-                    f"Last rotation date: "
-                    f"{last_date.strftime('%d-%m-%Y')}"
-                )
+                print(f"Last rotation date: " f"{last_date.strftime('%d-%m-%Y')}")
                 return last_date
             except ValueError:
                 print(

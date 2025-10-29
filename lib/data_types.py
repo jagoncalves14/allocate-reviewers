@@ -18,6 +18,7 @@ class Developer:
         review_for: Set of developer names this person is reviewing (tracking)
         order: Order for processing (used in some allocation logic)
     """
+
     name: str
     reviewer_number: int
     preferable_reviewer_names: Set[str] = field(default_factory=set)
@@ -36,5 +37,6 @@ class SelectableConfigure:
         names: Set of available reviewer names to select from
         number_getter: Callable that returns how many reviewers to select
     """
+
     names: Set[str]
     number_getter: Callable[[], int]

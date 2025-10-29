@@ -1,12 +1,12 @@
 """Tests for Teams rotation with load balancing"""
+
 from unittest.mock import patch
 
-import pytest
-
-from scripts.rotate_team_reviewers import assign_team_reviewers, parse_team_developers
 from lib.data_types import Developer
+from scripts.rotate_team_reviewers import assign_team_reviewers, parse_team_developers
 
-EXPERIENCED_DEVS = {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
+# INVERTED LOGIC: List unexperienced devs, everyone else is experienced
+UNEXPERIENCED_DEVS = {"Dev1", "Dev7", "Dev8", "Dev9", "Dev10", "Dev11", "Dev12"}
 
 
 class TestParseTeamDevelopers:
@@ -32,7 +32,7 @@ class TestParseTeamDevelopers:
 class TestAssignTeamReviewers:
     """Test team reviewer assignment with load balancing"""
 
-    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_team_with_no_members(self):
         """Team with 0 members should get N random experienced devs"""
         teams = [
@@ -43,16 +43,18 @@ class TestAssignTeamReviewers:
             )
         ]
 
-        assign_team_reviewers(teams)
+        # Provide all developers so experienced devs can be determined
+        all_devs = ["Dev2", "Dev3", "Dev4", "Dev5", "Dev6", "Dev7"]
+        assign_team_reviewers(teams, all_developers=all_devs)
 
         assert len(teams[0].reviewer_names) == 2
-        # All reviewers should be experienced devs
+        # All reviewers should be experienced devs (not in UNEXPERIENCED_DEVS)
         assert all(
             name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
             for name in teams[0].reviewer_names
         )
 
-    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_team_with_fewer_members_than_needed(self):
         """Team with 1 member needing 2 reviewers"""
         teams = [
@@ -63,7 +65,9 @@ class TestAssignTeamReviewers:
             )
         ]
 
-        assign_team_reviewers(teams)
+        # Provide all developers so experienced devs can be determined
+        all_devs = ["Dev2", "Dev3", "Dev4", "Dev5", "Dev6", "Dev7"]
+        assign_team_reviewers(teams, all_developers=all_devs)
 
         # Should have 2 reviewers
         assert len(teams[0].reviewer_names) == 2
@@ -73,11 +77,10 @@ class TestAssignTeamReviewers:
         other_reviewers = teams[0].reviewer_names - {"Dev7"}
         assert len(other_reviewers) == 1
         assert all(
-            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
-            for name in other_reviewers
+            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"} for name in other_reviewers
         )
 
-    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_team_with_enough_members(self):
         """Team with 3 members needing 2 reviewers"""
         teams = [
@@ -94,11 +97,10 @@ class TestAssignTeamReviewers:
         assert len(teams[0].reviewer_names) == 2
         # All reviewers should be from team members
         assert all(
-            name in {"Dev5", "Dev2", "Dev10"}
-            for name in teams[0].reviewer_names
+            name in {"Dev5", "Dev2", "Dev10"} for name in teams[0].reviewer_names
         )
 
-    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_load_balancing_across_multiple_teams(self):
         """Load balancing should distribute assignments fairly"""
         teams = [
@@ -132,7 +134,7 @@ class TestAssignTeamReviewers:
         # No dev should have more than 2 assignments (6/5 = 1.2, round up)
         assert all(count <= 2 for count in assignment_count.values())
 
-    @patch("lib.env_constants.EXPERIENCED_DEV_NAMES", EXPERIENCED_DEVS)
+    @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_different_reviewer_numbers_per_team(self):
         """Each team can have different reviewer requirements"""
         teams = [
@@ -148,8 +150,9 @@ class TestAssignTeamReviewers:
             ),
         ]
 
-        assign_team_reviewers(teams)
+        # Provide all developers so experienced devs can be determined
+        all_devs = ["Dev2", "Dev3", "Dev4", "Dev5", "Dev6"]
+        assign_team_reviewers(teams, all_developers=all_devs)
 
         assert len(teams[0].reviewer_names) == 1
         assert len(teams[1].reviewer_names) == 3
-
