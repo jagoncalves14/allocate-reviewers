@@ -78,12 +78,6 @@ class SheetIndicesFallback(int, Enum):
     TEAMS = 2  # Teams (default index)
 
 
-# Rotation types (only devs and teams can be rotated, config is just configuration)
-ROTATION_TYPES = [SheetTypes.DEVS.value, SheetTypes.TEAMS.value]
-
-# Rotation scheduling
-MINIMUM_DAYS_BETWEEN_ROTATIONS = 14  # 2 weeks (Wednesday to Wednesday)
-
 # Legacy column name lists (kept for backward compatibility)
 INDIVIDUAL_DEVELOPERS_COLUMNS = [
     DevsColumns.DEVELOPER.value,
@@ -113,6 +107,12 @@ EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 # Default values (can be overridden by config sheet)
 DEFAULT_REVIEWER_NUMBER = 1  # Fallback if config sheet is missing
 UNEXPERIENCED_DEV_NAMES = set()  # Fallback: empty = all are experienced
+
+# Rotation types (only devs and teams can be rotated, config is just configuration)
+ROTATION_TYPES = [SheetTypes.DEVS.value, SheetTypes.TEAMS.value]
+
+# Rotation scheduling
+MINIMUM_DAYS_BETWEEN_ROTATIONS = 14  # 2 weeks (Wednesday to Wednesday)
 
 # API Rate Limiting
 # Google Sheets API allows 60 write requests per minute per user
