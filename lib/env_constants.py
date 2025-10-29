@@ -106,7 +106,7 @@ EXPECTED_HEADERS_FOR_ROTATION = TEAMS_COLUMNS
 
 # Default values (can be overridden by config sheet)
 DEFAULT_REVIEWER_NUMBER = 1  # Fallback if config sheet is missing
-UNEXPERIENCED_DEV_NAMES = set()  # Fallback: empty = all are experienced
+UNEXPERIENCED_DEV_NAMES = set[str]()  # Fallback: empty = all are experienced
 
 # Rotation types (only devs and teams can be rotated, config is just configuration)
 ROTATION_TYPES = [SheetTypes.DEVS.value, SheetTypes.TEAMS.value]

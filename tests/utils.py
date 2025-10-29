@@ -1,6 +1,6 @@
 """Test utilities for mutating developer data in tests."""
 
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from lib.data_types import Developer
 
@@ -8,7 +8,7 @@ from lib.data_types import Developer
 def mutate_devs(
     devs: List[Developer],
     attribute_name: str,
-    dev_attribute_value_mapper: Dict[str, Any],
+    dev_attribute_value_mapper: Dict[str, str],
 ) -> None:
     """
     Mutate developer attributes for testing purposes.

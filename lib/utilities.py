@@ -10,7 +10,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from lib.data_types import Developer
 from lib.env_constants import (
-    DEFAULT_REVIEWER_NUMBER,
     DEVELOPER_HEADER,
     DRIVE_SCOPE,
     PREFERABLE_REVIEWER_HEADER,
@@ -367,18 +366,27 @@ def format_and_resize_columns(
 
 def load_developers_from_sheet(
     expected_headers: List[str],
-    values_mapper: Callable[[dict], Developer] = lambda record: Developer(
-        name=record[DEVELOPER_HEADER],
-        reviewer_number=int(record[REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
-        preferable_reviewer_names=(
-            set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
-            if record[PREFERABLE_REVIEWER_HEADER]
-            else set()
-        ),
-    ),
+    values_mapper: Callable[[dict], Developer] | None = None,
     sheet_index: int = SheetIndicesFallback.DEVS.value,
     sheet_name: str | None = None,
 ) -> List[Developer]:
+    # Default mapper - defined inside function to capture current DEFAULT_REVIEWER_NUMBER
+    if values_mapper is None:
+        # Import here to get the current value, not the import-time value
+        from lib import env_constants
+
+        values_mapper = lambda record: Developer(
+            name=record[DEVELOPER_HEADER],
+            reviewer_number=int(
+                record[REVIEWER_NUMBER_HEADER] or env_constants.DEFAULT_REVIEWER_NUMBER
+            ),
+            preferable_reviewer_names=(
+                set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
+                if record[PREFERABLE_REVIEWER_HEADER]
+                else set()
+            ),
+        )
+
     with get_remote_sheet(sheet_index, sheet_name) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)
         increment_api_call_count()  # 1 API call (get_all_records)

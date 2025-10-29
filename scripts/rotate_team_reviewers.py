@@ -272,7 +272,9 @@ if __name__ == "__main__":
             EXPECTED_HEADERS_FOR_ROTATION,
             values_mapper=lambda record: Developer(
                 name=record[TEAM_HEADER],
-                reviewer_number=int(record[TEAM_REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
+                reviewer_number=int(
+                    record[TEAM_REVIEWER_NUMBER_HEADER] or env_constants.DEFAULT_REVIEWER_NUMBER
+                ),
                 # Store team developers in preferable_reviewer_names field
                 preferable_reviewer_names=parse_team_developers(record[TEAM_DEVELOPERS_HEADER]),
             ),
