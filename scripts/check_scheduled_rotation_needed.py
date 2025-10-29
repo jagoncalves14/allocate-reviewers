@@ -9,7 +9,7 @@ Exit codes:
     1: Rotation not needed yet (< 14 days)
 
 Environment Variables:
-    LAST_SCHEDULED_ROTATION_DATE: Date of last scheduled rotation (format: YYYY-MM-DD)
+    LAST_SCHEDULED_ROTATION_DATE: Date of last scheduled rotation (format: DD-MM-YYYY)
                                   If empty/missing, assumes first run (rotation needed)
 """
 
@@ -40,11 +40,11 @@ def main() -> None:
         sys.exit(0)
 
     try:
-        last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
-        print(f"📅 Last scheduled rotation: {last_date.strftime('%Y-%m-%d')}")
+        last_date = datetime.strptime(last_date_str, "%d-%m-%Y")
+        print(f"📅 Last scheduled rotation: {last_date.strftime('%d-%m-%Y')}")
     except ValueError:
         print(f"⚠️  Warning: Invalid date format in LAST_SCHEDULED_ROTATION_DATE: '{last_date_str}'")
-        print("   Expected format: YYYY-MM-DD")
+        print("   Expected format: DD-MM-YYYY")
         print("   Treating as first run - rotation is needed")
         sys.exit(0)
 
@@ -61,7 +61,7 @@ def main() -> None:
     else:
         print(f"⏳ Rotation not needed yet ({days_since} < {MINIMUM_DAYS_BETWEEN_ROTATIONS} days)")
         print(
-            f"   Next rotation will be due on: {last_date.strftime('%Y-%m-%d')} + {MINIMUM_DAYS_BETWEEN_ROTATIONS} days"
+            f"   Next rotation will be due on: {last_date.strftime('%d-%m-%Y')} + {MINIMUM_DAYS_BETWEEN_ROTATIONS} days"
         )
         sys.exit(1)
 

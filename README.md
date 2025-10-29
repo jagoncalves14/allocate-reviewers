@@ -379,7 +379,7 @@ Two additional workflows are available for **manual execution only** (no cron):
    ```
    
    **About `LAST_SCHEDULED_ROTATION_DATE`:**
-   - 📅 Stores the date of the last **scheduled** rotation (format: `YYYY-MM-DD`)
+   - 📅 Stores the date of the last **scheduled** rotation (format: `DD-MM-YYYY`)
    - 🤖 Automatically updated by scheduled workflows (you don't need to set it)
    - 🔧 Leave empty on first setup (workflow will populate it)
    - ⏭️ Ensures rotations run every 2 Wednesdays (14 days)

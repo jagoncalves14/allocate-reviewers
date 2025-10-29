@@ -15,7 +15,7 @@ Previously, the system checked the last rotation date by parsing the column head
 ### The Solution (New Approach)
 Now we use a GitHub Variable to store the last **scheduled** rotation date:
 - ✅ **GitHub Variable**: `LAST_SCHEDULED_ROTATION_DATE`
-- ✅ **Format**: `YYYY-MM-DD` (e.g., `2025-10-29`)
+- ✅ **Format**: `DD-MM-YYYY` (e.g., `29-10-2025`)
 - ✅ **Only updated by scheduled runs** (manual runs don't affect it)
 - ✅ **Visible in GitHub UI** (Settings → Secrets and variables → Actions → Variables)
 - ✅ **Simple and reliable**
@@ -28,7 +28,7 @@ Go to your repository:
 1. **Settings** → **Secrets and variables** → **Actions** → **Variables** tab
 2. Click **"New repository variable"**
 3. **Name**: `LAST_SCHEDULED_ROTATION_DATE`
-4. **Value**: Leave empty for first run, or set to a date in format `YYYY-MM-DD`
+4. **Value**: Leave empty for first run, or set to a date in format `DD-MM-YYYY`
 5. Click **"Add variable"**
 
 ### 2. Workflow Automatically Updates It
@@ -81,27 +81,27 @@ When you trigger the workflow manually:
 ```
 Oct 15 (Wed) → Scheduled run ✅ (14+ days since last)
                 → Rotation executes
-                → Variable updated to: 2025-10-15
+                → Variable updated to: 15-10-2025
 
 Oct 18 (Sat) → Manual run 🔧
                 → Rotation executes (manual)
-                → Variable stays: 2025-10-15 (unchanged)
+                → Variable stays: 15-10-2025 (unchanged)
 
 Oct 22 (Wed) → Scheduled run ⏭️ (only 7 days since Oct 15)
                 → Skipped (not yet due)
-                → Variable stays: 2025-10-15
+                → Variable stays: 15-10-2025
 
 Oct 29 (Wed) → Scheduled run ✅ (14 days since Oct 15)
                 → Rotation executes (every 2 Wednesdays!)
-                → Variable updated to: 2025-10-29
+                → Variable updated to: 29-10-2025
 
 Nov 05 (Wed) → Scheduled run ⏭️ (only 7 days since Oct 29)
                 → Skipped (not yet due)
-                → Variable stays: 2025-10-29
+                → Variable stays: 29-10-2025
 
 Nov 12 (Wed) → Scheduled run ✅ (14 days since Oct 29)
                 → Rotation executes
-                → Variable updated to: 2025-11-12
+                → Variable updated to: 12-11-2025
 ```
 
 ## Checking When Next Rotation is Due
@@ -119,7 +119,7 @@ Look at the most recent scheduled workflow run:
 ### Option 3: Run Check Script Locally
 ```bash
 # Set the date from GitHub Variable
-export LAST_SCHEDULED_ROTATION_DATE="2025-10-29"
+export LAST_SCHEDULED_ROTATION_DATE="29-10-2025"
 
 # Check if rotation is needed
 poetry run python scripts/check_scheduled_rotation_needed.py
@@ -127,11 +127,11 @@ poetry run python scripts/check_scheduled_rotation_needed.py
 
 Output example:
 ```
-📅 Last scheduled rotation: 2025-10-29
+📅 Last scheduled rotation: 29-10-2025
 📊 Days since last scheduled rotation: 0
 📏 Minimum days required: 14
 ⏳ Rotation not needed yet (0 < 14 days)
-   Next rotation will be due on: 2025-10-29 + 14 days
+   Next rotation will be due on: 29-10-2025 + 14 days
 ```
 
 ## Troubleshooting
@@ -145,7 +145,7 @@ Output example:
 
 **Solution:**
 - Check the variable value in GitHub (Settings → Variables)
-- Ensure format is `YYYY-MM-DD`
+- Ensure format is `DD-MM-YYYY`
 - Check workflow logs for the date check step
 
 ### Rotation didn't run after 14+ days
@@ -176,12 +176,12 @@ If you're migrating from the old system (checking sheet columns):
 
 1. **Find last scheduled rotation date** from your sheet
    - Look at the most recent date column that was NOT a manual run
-   - Format: `DD-MM-YYYY` in sheet → convert to `YYYY-MM-DD`
+   - Format: `DD-MM-YYYY` in sheet (same format used in variable)
 
 2. **Set the GitHub Variable**
    - Go to Settings → Secrets and variables → Actions → Variables
    - Create `LAST_SCHEDULED_ROTATION_DATE`
-   - Set value to the converted date (e.g., `2025-10-15`)
+   - Set value to the date from the sheet (e.g., `15-10-2025`)
 
 3. **Deploy new workflow**
    - Push/merge the updated `.github/workflows/all-review-rotations.yml`
@@ -200,7 +200,7 @@ If you're migrating from the old system (checking sheet columns):
 The workflow uses GitHub CLI (`gh variable set`) to update the variable after successful rotation:
 
 ```bash
-gh variable set LAST_SCHEDULED_ROTATION_DATE --body "2025-10-29"
+gh variable set LAST_SCHEDULED_ROTATION_DATE --body "29-10-2025"
 ```
 
 This requires:
