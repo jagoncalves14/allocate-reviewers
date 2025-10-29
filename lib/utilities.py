@@ -12,10 +12,10 @@ from lib.data_types import Developer
 from lib.env_constants import (
     DEFAULT_REVIEWER_NUMBER,
     DEVELOPER_HEADER,
-    DEVS_SHEET,
     DRIVE_SCOPE,
     PREFERABLE_REVIEWER_HEADER,
     REVIEWER_NUMBER_HEADER,
+    SheetIndicesFallback,
 )
 
 load_dotenv(find_dotenv())
@@ -376,7 +376,7 @@ def load_developers_from_sheet(
             else set()
         ),
     ),
-    sheet_index: int = DEVS_SHEET,
+    sheet_index: int = SheetIndicesFallback.DEVS.value,
     sheet_name: str | None = None,
 ) -> List[Developer]:
     with get_remote_sheet(sheet_index, sheet_name) as sheet:
@@ -393,7 +393,7 @@ def load_developers_from_sheet(
 
 @contextmanager
 def get_remote_sheet(
-    sheet_index: int = DEVS_SHEET, sheet_name: str | None = None
+    sheet_index: int = SheetIndicesFallback.DEVS.value, sheet_name: str | None = None
 ) -> Worksheet:
     """
     Fetch the Worksheet data from remote Google sheet
@@ -421,9 +421,7 @@ def get_remote_sheet(
             "via SHEET_NAMES environment variable"
         )
 
-    credential = ServiceAccountCredentials.from_json_keyfile_name(
-        CREDENTIAL_FILE, DRIVE_SCOPE
-    )
+    credential = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIAL_FILE, DRIVE_SCOPE)
     client = gspread.authorize(credential)
     spreadsheet = client.open(sheet_name)
     # Get sheet by index (0-based)
@@ -435,7 +433,7 @@ def get_remote_sheet(
 def update_current_sprint_reviewers(
     expected_headers: List[str],
     devs: List[Developer],
-    sheet_index: int = DEVS_SHEET,
+    sheet_index: int = SheetIndicesFallback.DEVS.value,
     sheet_name: str | None = None,
 ) -> None:
     """Update reviewers in the current sprint column (for manual runs)"""
@@ -444,14 +442,12 @@ def update_current_sprint_reviewers(
     with get_remote_sheet(sheet_index, sheet_name) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
-        current_header = (
-            first_row[column_index - 1] if len(first_row) >= column_index else None
-        )
+        current_header = first_row[column_index - 1] if len(first_row) >= column_index else None
 
         if not current_header:
             # No existing sprint column, create one
             print("No existing sprint found, creating new column")
-            from allocate_reviewers import write_reviewers_to_sheet
+            from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
 
             write_reviewers_to_sheet(devs)
             return
@@ -475,9 +471,7 @@ def update_current_sprint_reviewers(
         # Build column data array (header + all rows)
         column_data = [[new_header]]
         for record in records:
-            developer = next(
-                dev for dev in devs if dev.name == record[DEVELOPER_HEADER]
-            )
+            developer = next(dev for dev in devs if dev.name == record[DEVELOPER_HEADER])
             reviewer_names = ", ".join(sorted(developer.reviewer_names))
             column_data.append([reviewer_names])
 
@@ -494,28 +488,25 @@ def update_current_sprint_reviewers(
 def update_current_team_rotation(
     expected_headers: List[str],
     teams: List[Developer],
+    sheet_index: int = SheetIndicesFallback.TEAMS.value,
     sheet_name: str | None = None,
 ) -> None:
     """
-    Update reviewers in the current rotation column (manual runs, 2nd sheet)
+    Update reviewers in the current rotation column (manual runs)
     """
     from lib.env_constants import TEAM_HEADER
 
     column_index = len(expected_headers) + 1
 
-    from lib.env_constants import TEAMS_SHEET
-
-    with get_remote_sheet(TEAMS_SHEET, sheet_name) as sheet:
+    with get_remote_sheet(sheet_index, sheet_name) as sheet:
         # Get the current header
         first_row = sheet.row_values(1)
-        current_header = (
-            first_row[column_index - 1] if len(first_row) >= column_index else None
-        )
+        current_header = first_row[column_index - 1] if len(first_row) >= column_index else None
 
         if not current_header or current_header.startswith("Exception"):
             # No existing rotation column or exception, create new one
             print("No valid rotation found, creating new column")
-            from rotate_reviewers import write_reviewers_to_sheet
+            from scripts.rotate_team_reviewers import write_reviewers_to_sheet
 
             write_reviewers_to_sheet(teams)
             return

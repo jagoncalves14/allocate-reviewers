@@ -211,7 +211,7 @@ Click **"Secrets" tab** and delete these 4 secrets:
 
 - ❌ **`SHEET_NAME`** → Now a **Variable** (more visible, easier to edit)
 - ❌ **`DEFAULT_REVIEWER_NUMBER`** → Now in **Config sheet** (Cell B2)
-- ❌ **`EXPERIENCED_DEV_NAMES`** → Now in **Config sheet** (Column A, but INVERTED: list unexperienced devs)
+- ❌ **`EXPERIENCED_DEV_NAMES`** → Now in **Config sheet** (Column A, with INVERTED logic)
 - ❌ **`REVIEWERS_CONFIG_LIST`** → Obsolete (new automatic logic)
 
 **C) Keep This Secret:**
@@ -230,7 +230,7 @@ Secrets (5 total):
 1. GOOGLE_CREDENTIALS_JSON       ✅ Keep as Secret
 2. SHEET_NAME                    → Move to Variable
 3. DEFAULT_REVIEWER_NUMBER       → Move to Config sheet
-4. EXPERIENCED_DEV_NAMES         → Move to Config sheet
+4. EXPERIENCED_DEV_NAMES         → Move to Config sheet (with inverted logic)
 5. REVIEWERS_CONFIG_LIST         → Delete (obsolete)
 ```
 
@@ -403,7 +403,7 @@ If you need to revert to the old system:
 3. **Delete the Config sheet**
 4. **Re-add GitHub Secrets:**
    - `DEFAULT_REVIEWER_NUMBER=2`
-   - `EXPERIENCED_DEV_NAMES=Dev2, Dev3, Dev4, Dev5, Dev6, Dev7, Dev8, Dev9, Dev10, Dev11` (OLD LOGIC - not inverted)
+   - `EXPERIENCED_DEV_NAMES=SeniorDev1, SeniorDev2, SeniorDev3` (OLD LOGIC - lists experienced devs)
    - `REVIEWERS_CONFIG_LIST=` (if you were using the old index-based system)
 5. **Revert code changes:**
    ```bash
@@ -433,7 +433,7 @@ Use this checklist to ensure you've completed all steps:
 - [ ] Kept `GOOGLE_CREDENTIALS_JSON` **Secret** (only secret needed)
 - [ ] Deleted `SHEET_NAME` secret (moved to Variable)
 - [ ] Deleted `DEFAULT_REVIEWER_NUMBER` secret (moved to Config sheet)
-- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret (moved to Config sheet, but INVERTED: list unexperienced devs)
+- [ ] Deleted `EXPERIENCED_DEV_NAMES` secret (moved to Config sheet with inverted logic)
 - [ ] Deleted `REVIEWERS_CONFIG_LIST` secret (obsolete)
 
 **Testing:**

@@ -13,7 +13,7 @@ BUSINESS LOGIC:
 2. Experience-Based Assignment Rules (INVERTED LOGIC):
    NOTE: Config sheet lists "Unexperienced Developers" (junior devs)
    Everyone NOT on that list is considered experienced.
-   
+
    a) UNEXPERIENCED DEVELOPERS (Junior/New):
       - Can ONLY be assigned experienced developers as reviewers
       - Cannot have other unexperienced developers reviewing their code
@@ -89,14 +89,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Set
 
+from dotenv import find_dotenv, load_dotenv
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# pylint: next-line: disable=wrong-import-position
-from dotenv import find_dotenv, load_dotenv
 
 from lib.data_types import Developer  # noqa: E402
-from lib.env_constants import EXPECTED_HEADERS_FOR_ALLOCATION  # noqa: E402
+from lib.env_constants import EXPECTED_HEADERS_FOR_ALLOCATION, SheetIndicesFallback  # noqa: E402
 from lib.utilities import (  # noqa: E402
     format_and_resize_columns,
     get_api_call_count,
@@ -168,14 +168,8 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
 
     print("\n📊 Developer Classification (INVERTED LOGIC):")
     print(f"   Names in FE Developers sheet: {sorted(all_dev_names)}")
-    print(
-        f"   Names from UNEXPERIENCED_DEV_NAMES config: "
-        f"{sorted(unexperienced_dev_names)}"
-    )
-    print(
-        f"   ✅ 👨‍🎓 Matched (Unexperienced/Junior): "
-        f"{sorted(valid_unexperienced_dev_names)}"
-    )
+    print(f"   Names from UNEXPERIENCED_DEV_NAMES config: " f"{sorted(unexperienced_dev_names)}")
+    print(f"   ✅ 👨‍🎓 Matched (Unexperienced/Junior): " f"{sorted(valid_unexperienced_dev_names)}")
     print(f"   ✅ 👷 Experienced (NOT in config): {sorted(experienced_dev_names)}")
 
     # Show mismatches
@@ -220,9 +214,7 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
         remaining_needed = reviewer_number - len(chosen_reviewer_names)
         if remaining_needed > 0:
             available = all_dev_names - chosen_reviewer_names - {dev.name}
-            selected = shuffle_and_get_the_most_available_names(
-                available, remaining_needed, devs
-            )
+            selected = shuffle_and_get_the_most_available_names(available, remaining_needed, devs)
             chosen_reviewer_names.update(selected)
             if selected:
                 print(f"   Filled: {sorted(selected)}")
@@ -280,10 +272,7 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
         # Recalculate to get current state
         current_unexp_reviewers = dev.reviewer_names & valid_unexperienced_dev_names
         if not is_experienced and len(current_unexp_reviewers) > 0:
-            msg = (
-                f"⚠️  {dev.name} (Unexp) has unexp reviewers: "
-                f"{current_unexp_reviewers}"
-            )
+            msg = f"⚠️  {dev.name} (Unexp) has unexp reviewers: " f"{current_unexp_reviewers}"
             print(msg)
             # Make a copy of the set to avoid modification during iteration
             for unexp_name in list(current_unexp_reviewers):
@@ -394,9 +383,7 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
                 )
                 print(msg)
             else:
-                msg = (
-                    f"⚠️  Could not assign {unexp_dev.name} - " "no suitable candidates"
-                )
+                msg = f"⚠️  Could not assign {unexp_dev.name} - " "no suitable candidates"
                 print(msg)
     else:
         print("✅ All unexperienced developers already assigned")
@@ -421,9 +408,7 @@ def run_reviewer_allocation_algorithm(devs: List[Developer]) -> None:
     print(f"Average assignments per developer: {avg_assignments:.2f}")
     print()
     print("Assignments per developer (sorted by count):")
-    for dev_name, count in sorted(
-        reviewer_assignment_count.items(), key=lambda x: (-x[1], x[0])
-    ):
+    for dev_name, count in sorted(reviewer_assignment_count.items(), key=lambda x: (-x[1], x[0])):
         dev = next(d for d in devs if d.name == dev_name)
         is_exp = dev.name in experienced_dev_names
         exp_label = "👷" if is_exp else "👨‍🎓"
@@ -529,7 +514,9 @@ def allocate_reviewers(devs: List[Developer], max_retries: int = 10) -> None:
 
 
 def write_reviewers_to_sheet(
-    devs: List[Developer], sheet_name: str | None = None
+    devs: List[Developer],
+    sheet_index: int = SheetIndicesFallback.DEVS.value,
+    sheet_name: str | None = None,
 ) -> None:
     """
     Write reviewer assignments to a new column in the Google Sheet.
@@ -539,6 +526,7 @@ def write_reviewers_to_sheet(
 
     Args:
         devs: List of developers with assigned reviewers
+        sheet_index: Index of the worksheet (default: SheetIndicesFallback.DEVS)
         sheet_name: Name of the Google Sheet file to write to.
             If None, uses first sheet from SHEET_NAMES environment variable.
     """
@@ -546,18 +534,18 @@ def write_reviewers_to_sheet(
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    with get_remote_sheet(sheet_name=sheet_name) as sheet:
-        records = sheet.get_all_records(
-            expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION
-        )
+    from lib.env_constants import DevsColumns
+
+    developer_name_key = DevsColumns.DEVELOPER.value
+
+    with get_remote_sheet(sheet_index, sheet_name=sheet_name) as sheet:
+        records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS_FOR_ALLOCATION)
         increment_api_call_count()  # 1 API call (get_all_records)
         for record in records:
-            developer = next(
-                (dev for dev in devs if dev.name == record["Developer"]), None
-            )
+            developer = next((dev for dev in devs if dev.name == record[developer_name_key]), None)
             if developer is None:
                 # Developer in sheet but not processed (removed from config?)
-                dev_name = record["Developer"]
+                dev_name = record[developer_name_key]
                 print(
                     f"   ⚠️  WARNING: Developer '{dev_name}' in sheet "
                     f"but not in processed list - skipping"

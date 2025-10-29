@@ -27,6 +27,20 @@ isort = "^5.12.0"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
 [tool.autoflake]
 check = false
 imports = ["django", "requests", "urllib3"]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.messages_control]
+max-line-length = 100

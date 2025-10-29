@@ -303,7 +303,7 @@ These workflows work with the `SHEET_NAME` variable and run:
 
 **Benefits:**
 - ✅ **No Race Conditions**: Runs sequentially, not simultaneously
-- ✅ **Independent Schedules**: Each rotation runs only if needed (15+ days)
+- ✅ **Independent Schedules**: Each rotation runs only if needed (14+ days)
 - ✅ **Automated**: Runs without manual intervention
 - ✅ **Clear Summary**: Shows which rotations ran/skipped
 
@@ -446,7 +446,7 @@ Your Google Sheet should have **at least two sheet tabs**:
 - **Scheduled Execution**: Every Wednesday at 5:00 AM Finland Time (3:00 AM UTC), the unified workflow checks both rotations
 - **Date Checking**: Each script reads the most recent sprint/rotation date from its respective sheet tab
 - **Independent Schedules**: Individual developers and teams rotate independently (can be on different 15-day cycles)
-- **Smart Execution**: Only runs if 15+ days have passed (or if manually triggered)
+- **Smart Execution**: Only runs if 14+ days have passed (or if manually triggered)
 - **Manual Override**: Manual triggers always execute immediately, independent of the schedule
 - **Load Balancing**: Both systems track assignments and prioritize reviewers/developers with fewer assignments
 - **Sheet Access**: Uses sheet indices (0 and 1) instead of names - name your sheets however you like!

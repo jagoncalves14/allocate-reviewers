@@ -1,5 +1,7 @@
 import os
+import sys
 from dataclasses import asdict
+from pathlib import Path
 from typing import Dict, List
 from unittest.mock import Mock, patch
 
@@ -8,22 +10,25 @@ from freezegun import freeze_time
 from gspread import Spreadsheet, Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-from lib.data_types import Developer
-from lib.env_constants import (
-    DEVS_SHEET,
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from lib.data_types import Developer  # noqa: E402
+from lib.env_constants import (  # noqa: E402
     DRIVE_SCOPE,
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,
+    SheetIndicesFallback,
 )
-from lib.utilities import (
+from lib.utilities import (  # noqa: E402
     format_and_resize_columns,
     get_remote_sheet,
     load_developers_from_sheet,
     update_current_sprint_reviewers,
 )
-from scripts.rotate_devs_reviewers import write_reviewers_to_sheet
-from tests.conftest import SHEET
-from tests.utils import mutate_devs
+from scripts.rotate_devs_reviewers import write_reviewers_to_sheet  # noqa: E402
+from tests.conftest import SHEET  # noqa: E402
+from tests.utils import mutate_devs  # noqa: E402
 
 
 @patch.dict(os.environ, {"CREDENTIAL_FILE": "credential_file.json", "SHEET_NAMES": "S"})
@@ -40,14 +45,14 @@ def test_get_remote_sheet(mocked_gspread: Mock, mocked_service_account: Mock) ->
     mocked_spreadsheet = Mock(spec=Spreadsheet)
     mocked_client.open.return_value = mocked_spreadsheet
 
-    with get_remote_sheet(DEVS_SHEET) as _:
+    with get_remote_sheet(SheetIndicesFallback.DEVS.value) as _:
         mocked_service_account.from_json_keyfile_name.assert_called_once_with(
             "credential_file.json", DRIVE_SCOPE
         )
         mocked_gspread.authorize.assert_called_once_with(mocked_credential)
 
         mocked_client.open.assert_called_once_with("S")
-        mocked_spreadsheet.get_worksheet.assert_called_once_with(DEVS_SHEET)
+        mocked_spreadsheet.get_worksheet.assert_called_once_with(SheetIndicesFallback.DEVS.value)
 
         mocked_client.session.close.assert_not_called()
 
@@ -74,9 +79,7 @@ def test_write_reviewers_to_sheet(
     mocked_devs: List[Developer],
 ) -> None:
     """Test write_reviewers_to_sheet inserts a new column correctly."""
-    with patch(
-        "scripts.rotate_devs_reviewers.get_remote_sheet"
-    ) as mocked_get_remote_sheet:
+    with patch("scripts.rotate_devs_reviewers.get_remote_sheet") as mocked_get_remote_sheet:
         with mocked_get_remote_sheet() as mocked_sheet:
             DEV_REVIEWERS_MAPPER = {
                 "B": set(("C", "D")),
@@ -118,25 +121,23 @@ def test_format_and_resize_columns_batch_update() -> None:
     assert len(requests) == 6
 
     # Verify current column header format (light blue, bold)
-    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"][
-        "backgroundColor"
-    ] == {"red": 0.85, "green": 0.92, "blue": 1}
-    assert (
-        requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"]
-        is True
-    )
+    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
+        "red": 0.85,
+        "green": 0.92,
+        "blue": 1,
+    }
+    assert requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is True
 
     # Verify old column header format (grey, not bold)
-    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"][
-        "backgroundColor"
-    ] == {"red": 1, "green": 1, "blue": 1}
-    assert (
-        requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"]
-        is False
-    )
-    old_foreground = requests[2]["repeatCell"]["cell"]["userEnteredFormat"][
-        "textFormat"
-    ]["foregroundColor"]
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"] == {
+        "red": 1,
+        "green": 1,
+        "blue": 1,
+    }
+    assert requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"]["bold"] is False
+    old_foreground = requests[2]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"][
+        "foregroundColor"
+    ]
     assert old_foreground == {"red": 0.8, "green": 0.8, "blue": 0.8}
 
     # Verify current column resize (280px)
@@ -208,9 +209,7 @@ def test_update_current_sprint_reviewers_batch_update(
             mutate_devs(mocked_devs, "reviewer_names", DEV_REVIEWERS_MAPPER)
 
             # Call the function
-            update_current_sprint_reviewers(
-                EXPECTED_HEADERS_FOR_ALLOCATION, mocked_devs
-            )
+            update_current_sprint_reviewers(EXPECTED_HEADERS_FOR_ALLOCATION, mocked_devs)
 
             # Should NOT call update_cell at all
             assert not mocked_sheet.update_cell.called

@@ -50,8 +50,7 @@ class TestAssignTeamReviewers:
         assert len(teams[0].reviewer_names) == 2
         # All reviewers should be experienced devs (not in UNEXPERIENCED_DEVS)
         assert all(
-            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"}
-            for name in teams[0].reviewer_names
+            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"} for name in teams[0].reviewer_names
         )
 
     @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
@@ -76,9 +75,7 @@ class TestAssignTeamReviewers:
         # Other reviewer should be experienced dev not in team
         other_reviewers = teams[0].reviewer_names - {"Dev7"}
         assert len(other_reviewers) == 1
-        assert all(
-            name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"} for name in other_reviewers
-        )
+        assert all(name in {"Dev2", "Dev3", "Dev4", "Dev5", "Dev6"} for name in other_reviewers)
 
     @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_team_with_enough_members(self):
@@ -96,9 +93,7 @@ class TestAssignTeamReviewers:
         # Should have exactly 2 reviewers
         assert len(teams[0].reviewer_names) == 2
         # All reviewers should be from team members
-        assert all(
-            name in {"Dev5", "Dev2", "Dev10"} for name in teams[0].reviewer_names
-        )
+        assert all(name in {"Dev5", "Dev2", "Dev10"} for name in teams[0].reviewer_names)
 
     @patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", UNEXPERIENCED_DEVS)
     def test_load_balancing_across_multiple_teams(self):

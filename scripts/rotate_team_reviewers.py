@@ -63,7 +63,7 @@ from lib.env_constants import (  # noqa: E402
     TEAM_DEVELOPERS_HEADER,
     TEAM_HEADER,
     TEAM_REVIEWER_NUMBER_HEADER,
-    TEAMS_SHEET,
+    SheetIndicesFallback,
 )
 
 # pylint: next-line: disable=wrong-import-position
@@ -82,9 +82,7 @@ def parse_team_developers(team_developers_str: str) -> set[str]:
     return set(name.strip() for name in team_developers_str.split(","))
 
 
-def assign_team_reviewers(
-    teams: List[Developer], all_developers: List[str] | None = None
-) -> None:
+def assign_team_reviewers(teams: List[Developer], all_developers: List[str] | None = None) -> None:
     """
     Assign reviewers to teams based on team composition with load balancing.
 
@@ -116,11 +114,11 @@ def assign_team_reviewers(
     if all_developers:
         all_dev_names.update(all_developers)
 
-    unexperienced_dev_names = set(UNEXPERIENCED_DEV_NAMES)
+    unexperienced_dev_names = set[str](UNEXPERIENCED_DEV_NAMES)
     experienced_dev_names = all_dev_names - unexperienced_dev_names
-    experienced_devs = list(experienced_dev_names)
+    experienced_devs = list[str](experienced_dev_names)
 
-    print(f"\n📊 Team Rotation Summary:")
+    print("\n📊 Team Rotation Summary:")
     print(f"   Teams to process: {len(teams)}")
     print(f"   Experienced developers pool: {len(experienced_devs)}")
     print(f"   {sorted(experienced_devs)}\n")
@@ -136,9 +134,7 @@ def assign_team_reviewers(
         # Sort by assignment count (ascending), then randomize ties
         candidates_copy = candidates.copy()
         random.shuffle(candidates_copy)  # Randomize first
-        candidates_copy.sort(
-            key=lambda name: assignment_count.get(name, 0)
-        )  # Then sort by load
+        candidates_copy.sort(key=lambda name: assignment_count.get(name, 0))  # Then sort by load
 
         return candidates_copy[:count]
 
@@ -158,7 +154,7 @@ def assign_team_reviewers(
 
         if num_members == 0:
             # No team members → assign balanced experienced devs
-            print(f"   Strategy: Team has no members → selecting from experienced devs")
+            print("   Strategy: Team has no members → selecting from experienced devs")
             selected = select_balanced(experienced_devs, num_reviewers)
             team.reviewer_names.update(selected)
             # Track assignments
@@ -169,7 +165,7 @@ def assign_team_reviewers(
         elif num_members < num_reviewers:
             # Fewer members than needed → use all + fill with experienced devs
             print(
-                f"   Strategy: Team has {num_members} members, needs {num_reviewers} → using all members + experienced devs"
+                f"   Strategy: Team has {num_members} members, needs {num_reviewers} → using all members + experienced"
             )
             team.reviewer_names.update(team_members)
             # Track team member assignments
@@ -207,7 +203,7 @@ def assign_team_reviewers(
 
     # Show load balancing summary
     if assignment_count:
-        print(f"📊 Load Balancing Summary:")
+        print("📊 Load Balancing Summary:")
         print(f"   Total assignments: {sum(assignment_count.values())}")
         for dev, count in sorted(assignment_count.items(), key=lambda x: (-x[1], x[0])):
             print(f"   {dev}: {count} team(s)")
@@ -215,7 +211,9 @@ def assign_team_reviewers(
 
 
 def write_reviewers_to_sheet(
-    teams: List[Developer], sheet_name: str | None = None
+    teams: List[Developer],
+    sheet_index: int = SheetIndicesFallback.TEAMS.value,
+    sheet_name: str | None = None,
 ) -> None:
     """
     Write team reviewer assignments to a new column in the Google Sheet.
@@ -225,6 +223,7 @@ def write_reviewers_to_sheet(
 
     Args:
         teams: List of teams with assigned reviewers
+        sheet_index: Index of the worksheet (default: SheetIndicesFallback.TEAMS)
         sheet_name: Name of the Google Sheet file to write to.
             If None, uses first sheet from SHEET_NAMES environment variable.
     """
@@ -234,7 +233,7 @@ def write_reviewers_to_sheet(
     column_header = datetime.now().strftime("%d-%m-%Y")
     new_column = [column_header]
 
-    with get_remote_sheet(TEAMS_SHEET, sheet_name=sheet_name) as sheet:
+    with get_remote_sheet(sheet_index, sheet_name=sheet_name) as sheet:
         records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS_FOR_ROTATION)
         for record in records:
             team = next((t for t in teams if t.name == record[TEAM_HEADER]), None)
@@ -269,33 +268,29 @@ if __name__ == "__main__":
         env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
         env_constants.UNEXPERIENCED_DEV_NAMES = unexperienced_dev_names
 
-        teams = load_developers_from_sheet(
+        loaded_teams = load_developers_from_sheet(
             EXPECTED_HEADERS_FOR_ROTATION,
             values_mapper=lambda record: Developer(
                 name=record[TEAM_HEADER],
-                reviewer_number=int(
-                    record[TEAM_REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER
-                ),
+                reviewer_number=int(record[TEAM_REVIEWER_NUMBER_HEADER] or DEFAULT_REVIEWER_NUMBER),
                 # Store team developers in preferable_reviewer_names field
-                preferable_reviewer_names=parse_team_developers(
-                    record[TEAM_DEVELOPERS_HEADER]
-                ),
+                preferable_reviewer_names=parse_team_developers(record[TEAM_DEVELOPERS_HEADER]),
             ),
-            sheet_index=TEAMS_SHEET,
+            sheet_index=SheetIndicesFallback.TEAMS.value,
         )
 
         # Assign reviewers to ALL teams at once (maintains load balance)
-        assign_team_reviewers(teams)
+        assign_team_reviewers(loaded_teams)
 
         # Check if this is a manual run
         is_manual_run = os.environ.get("MANUAL_RUN", "false") == "true"
 
         if is_manual_run:
             print("Manual run detected - updating current rotation")
-            update_current_team_rotation(EXPECTED_HEADERS_FOR_ROTATION, teams)
+            update_current_team_rotation(EXPECTED_HEADERS_FOR_ROTATION, loaded_teams)
         else:
             print("Scheduled run - creating new rotation")
-            write_reviewers_to_sheet(teams)
+            write_reviewers_to_sheet(loaded_teams)
     except Exception as exc:  # noqa: BLE001
         print(f"\n❌ Error during Teams rotation: {exc}")
         traceback.print_exc()

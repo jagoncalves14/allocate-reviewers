@@ -34,17 +34,101 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # pylint: next-line: disable=wrong-import-position
-from lib.env_constants import API_RATE_LIMIT_DELAY, get_sheet_names  # noqa: E402
+from lib.env_constants import (  # noqa: E402
+    API_RATE_LIMIT_DELAY,
+    ConfigColumns,
+    DevsColumns,
+    SheetTypes,
+    TeamsColumns,
+    get_sheet_names,
+)
+from lib.utilities import get_remote_sheet  # noqa: E402
+
+
+def detect_sheet_type(sheet_name: str, sheet_index: int) -> SheetTypes | None:
+    """
+    Detect sheet type by reading the first column header.
+
+    Args:
+        sheet_name: Name of the Google Sheet
+        sheet_index: Index of the worksheet (0-4, checking Devs/Config/Teams)
+
+    Returns:
+        SheetTypes.DEVS if first column is "Developer"
+        SheetTypes.CONFIG if first column is "Unexperienced Developers"
+        SheetTypes.TEAMS if first column is "Team"
+        None if sheet doesn't exist or unrecognized
+    """
+    try:
+        with get_remote_sheet(sheet_index, sheet_name=sheet_name) as worksheet:
+            # Get first row (headers)
+            first_row = worksheet.row_values(1)
+
+            if not first_row:
+                return None
+
+            first_column = first_row[0].strip()
+
+            # Use enums for better type safety
+            if first_column == DevsColumns.DEVELOPER.value:
+                return SheetTypes.DEVS
+            elif first_column == ConfigColumns.UNEXPERIENCED_DEVELOPERS.value:
+                return SheetTypes.CONFIG
+            elif first_column == TeamsColumns.TEAM.value:
+                return SheetTypes.TEAMS
+            else:
+                return None
+
+    except Exception:  # noqa: BLE001 # pylint: disable=broad-except
+        # Sheet doesn't exist or error reading it
+        return None
+
+
+def detect_all_sheet_types(sheet_name: str) -> dict[SheetTypes, int]:
+    """
+    Detect all available sheet types in a Google Sheet.
+
+    Args:
+        sheet_name: Name of the Google Sheet
+
+    Returns:
+        Dictionary mapping sheet type (SheetTypes enum) to sheet index
+        Example: {SheetTypes.CONFIG: 0, SheetTypes.DEVS: 1, SheetTypes.TEAMS: 2}
+    """
+    detected = {}
+
+    # Try up to 5 sheets (typical: Devs, Config, Teams, and maybe more)
+    for sheet_index in range(5):
+        sheet_type = detect_sheet_type(sheet_name, sheet_index)
+        if sheet_type:
+            detected[sheet_type] = sheet_index
+
+            # Prettier labels for output
+            type_labels = {
+                SheetTypes.DEVS: "DEVS (Individual Developers)",
+                SheetTypes.CONFIG: "CONFIG (Configuration)",
+                SheetTypes.TEAMS: "TEAMS (Team Rotation)",
+            }
+            label = type_labels.get(sheet_type, sheet_type.value.upper())
+            print(f"   📄 Found {label} at index {sheet_index}")
+
+    return detected
 
 
 def run_devs_rotation_for_sheet(
-    sheet_name: str, is_manual: bool = False, max_retries: int = 3
+    sheet_name: str,
+    sheet_index: int = 1,
+    config_index: int | None = None,
+    is_manual: bool = False,
+    max_retries: int = 3,
 ) -> bool:
     """
     Run individual developers rotation for a specific sheet.
 
     Args:
         sheet_name: Name of the Google Sheet to process
+        sheet_index: Index of the worksheet (default: 1, most common case)
+        config_index: Index of the Config worksheet (default: None, uses SheetIndicesFallback.CONFIG)
         is_manual: Whether this is a manual run
         max_retries: Maximum number of retries on rate limit errors
 
@@ -61,23 +145,20 @@ def run_devs_rotation_for_sheet(
             from lib import env_constants
             from lib.config_loader import load_config_from_sheet
             from lib.env_constants import EXPECTED_HEADERS_FOR_ALLOCATION
-            from lib.utilities import (
-                load_developers_from_sheet,
-                update_current_sprint_reviewers,
-            )
-            from scripts.rotate_devs_reviewers import (
-                allocate_reviewers,
-                write_reviewers_to_sheet,
-            )
+            from lib.utilities import load_developers_from_sheet, update_current_sprint_reviewers
+            from scripts.rotate_devs_reviewers import allocate_reviewers, write_reviewers_to_sheet
 
             # Load configuration from this sheet's Config tab
-            default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)
+            default_reviewer_number, unexp_dev_names = load_config_from_sheet(
+                sheet_name, config_index=config_index
+            )
             env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
-            env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
+            env_constants.UNEXPERIENCED_DEV_NAMES = unexp_dev_names
 
             # Load developers from this sheet
             developers = load_developers_from_sheet(
                 EXPECTED_HEADERS_FOR_ALLOCATION,
+                sheet_index=sheet_index,
                 sheet_name=sheet_name,
             )
 
@@ -90,11 +171,12 @@ def run_devs_rotation_for_sheet(
                 update_current_sprint_reviewers(
                     EXPECTED_HEADERS_FOR_ALLOCATION,
                     developers,
+                    sheet_index=sheet_index,
                     sheet_name=sheet_name,
                 )
             else:
                 print("Scheduled run: Creating new sprint column")
-                write_reviewers_to_sheet(developers, sheet_name=sheet_name)
+                write_reviewers_to_sheet(developers, sheet_index=sheet_index, sheet_name=sheet_name)
 
             print(f"✅ Successfully processed: {sheet_name}\n")
             return True
@@ -113,10 +195,7 @@ def run_devs_rotation_for_sheet(
                     time.sleep(wait_time)
                     continue
                 else:
-                    print(
-                        f"❌ Rate limit exceeded after {max_retries} "
-                        f"attempts: {sheet_name}"
-                    )
+                    print(f"❌ Rate limit exceeded after {max_retries} " f"attempts: {sheet_name}")
             else:
                 print(f"❌ Error processing {sheet_name}: {exc}")
                 traceback.print_exc()
@@ -126,13 +205,19 @@ def run_devs_rotation_for_sheet(
 
 
 def run_teams_rotation_for_sheet(
-    sheet_name: str, is_manual: bool = False, max_retries: int = 3
+    sheet_name: str,
+    sheet_index: int = 2,
+    config_index: int | None = None,
+    is_manual: bool = False,
+    max_retries: int = 3,
 ) -> bool:
     """
     Run teams rotation for a specific sheet.
 
     Args:
         sheet_name: Name of the Google Sheet to process
+        sheet_index: Index of the worksheet (default: 2)
+        config_index: Index of the Config worksheet (default: None, uses SheetIndicesFallback.CONFIG)
         is_manual: Whether this is a manual run
         max_retries: Maximum number of retries on rate limit errors
 
@@ -155,19 +240,18 @@ def run_teams_rotation_for_sheet(
                 TEAM_HEADER,
                 TEAM_REVIEWER_NUMBER_HEADER,
             )
-            from lib.utilities import (
-                load_developers_from_sheet,
-                update_current_team_rotation,
-            )
+            from lib.utilities import load_developers_from_sheet, update_current_team_rotation
             from scripts.rotate_team_reviewers import assign_team_reviewers
             from scripts.rotate_team_reviewers import (
                 write_reviewers_to_sheet as write_team_reviewers_to_sheet,
             )
 
             # Load configuration from this sheet's Config tab
-            default_reviewer_number, exp_dev_names = load_config_from_sheet(sheet_name)
+            default_reviewer_number, unexp_dev_names = load_config_from_sheet(
+                sheet_name, config_index=config_index
+            )
             env_constants.DEFAULT_REVIEWER_NUMBER = default_reviewer_number
-            env_constants.EXPERIENCED_DEV_NAMES = exp_dev_names
+            env_constants.UNEXPERIENCED_DEV_NAMES = unexp_dev_names
 
             # Load teams from this sheet
             teams = load_developers_from_sheet(
@@ -187,7 +271,7 @@ def run_teams_rotation_for_sheet(
                         else set()
                     ),
                 ),
-                sheet_index=2,  # Teams sheet
+                sheet_index=sheet_index,
                 sheet_name=sheet_name,
             )
 
@@ -200,11 +284,12 @@ def run_teams_rotation_for_sheet(
                 update_current_team_rotation(
                     EXPECTED_HEADERS_FOR_ROTATION,
                     teams,
+                    sheet_index=sheet_index,
                     sheet_name=sheet_name,
                 )
             else:
                 print("Scheduled run: Creating new rotation column")
-                write_team_reviewers_to_sheet(teams, sheet_name=sheet_name)
+                write_team_reviewers_to_sheet(teams, sheet_index=sheet_index, sheet_name=sheet_name)
 
             print(f"✅ Successfully processed: {sheet_name}\n")
             return True
@@ -212,11 +297,8 @@ def run_teams_rotation_for_sheet(
         except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-except
             # Check if Teams sheet doesn't exist (optional sheet)
             exc_type = type(exc).__name__
-            if "WorksheetNotFound" in exc_type or "index 2" in str(exc):
-                print(
-                    f"ℹ️  No Teams sheet found in {sheet_name} - "
-                    f"skipping Teams rotation"
-                )
+            if "WorksheetNotFound" in exc_type or "index" in str(exc):
+                print(f"ℹ️  Teams sheet not found in {sheet_name} - skipping Teams rotation")
                 return True  # Not an error, just skip
 
             # Check if it's a rate limit error
@@ -232,10 +314,7 @@ def run_teams_rotation_for_sheet(
                     time.sleep(wait_time)
                     continue
                 else:
-                    print(
-                        f"❌ Rate limit exceeded after {max_retries} "
-                        f"attempts: {sheet_name}"
-                    )
+                    print(f"❌ Rate limit exceeded after {max_retries} " f"attempts: {sheet_name}")
             else:
                 print(f"❌ Error processing {sheet_name}: {exc}")
                 traceback.print_exc()
@@ -251,9 +330,7 @@ def main() -> None:
     Supports running individual developer rotations, team rotations, or both
     across one or more Google Sheets defined in SHEET_NAMES env variable.
     """
-    parser = argparse.ArgumentParser(
-        description="Run rotations across multiple Google Sheets"
-    )
+    parser = argparse.ArgumentParser(description="Run rotations across multiple Google Sheets")
     parser.add_argument(
         "--type",
         choices=["devs", "teams", "all"],
@@ -295,9 +372,31 @@ def main() -> None:
 
     # Process each sheet
     for i, sheet_name in enumerate(sheet_names):
-        # Run developers rotation
-        if args.type in ["devs", "all"]:
-            if run_devs_rotation_for_sheet(sheet_name, args.manual):
+        print(f"\n{'=' * 80}")
+        print(f"🔍 Detecting sheet types in: {sheet_name}")
+        print(f"{'=' * 80}")
+
+        # Auto-detect available sheet types
+        detected_sheets = detect_all_sheet_types(sheet_name)
+
+        if not detected_sheets:
+            print(f"⚠️  No Developer or Team sheets found in: {sheet_name}")
+            print("   Skipping this sheet")
+            continue
+
+        # Get config index (optional - will use default if not found)
+        config_index = detected_sheets.get(SheetTypes.CONFIG)
+        if config_index is None:
+            print("   ⚠️  Config sheet not detected - will use default index (0)")
+
+        # Run developers rotation if detected and requested
+        if SheetTypes.DEVS in detected_sheets and args.type in [
+            SheetTypes.DEVS.value,
+            "all",
+        ]:
+            devs_index = detected_sheets[SheetTypes.DEVS]
+            print(f"\n📋 Running Individual Developers Rotation (sheet index {devs_index})")
+            if run_devs_rotation_for_sheet(sheet_name, devs_index, config_index, args.manual):
                 results["devs_success"] += 1
             else:
                 results["devs_failed"] += 1
@@ -305,26 +404,29 @@ def main() -> None:
             # Add delay after devs rotation to avoid rate limits
             # Google Sheets API: 60 write requests per minute
             if args.type == "all" or (i < len(sheet_names) - 1):
-                print(
-                    f"⏳ Waiting {API_RATE_LIMIT_DELAY} seconds "
-                    f"to avoid API rate limits..."
-                )
+                print(f"⏳ Waiting {API_RATE_LIMIT_DELAY} seconds " f"to avoid API rate limits...")
                 time.sleep(API_RATE_LIMIT_DELAY)
+        elif args.type == SheetTypes.DEVS.value:
+            print(f"ℹ️  No Developer sheet found in {sheet_name} - skipping")
 
-        # Run teams rotation
-        if args.type in ["teams", "all"]:
-            if run_teams_rotation_for_sheet(sheet_name, args.manual):
+        # Run teams rotation if detected and requested
+        if SheetTypes.TEAMS in detected_sheets and args.type in [
+            SheetTypes.TEAMS.value,
+            "all",
+        ]:
+            teams_index = detected_sheets[SheetTypes.TEAMS]
+            print(f"\n👥 Running Teams Rotation (sheet index {teams_index})")
+            if run_teams_rotation_for_sheet(sheet_name, teams_index, config_index, args.manual):
                 results["teams_success"] += 1
             else:
                 results["teams_failed"] += 1
 
             # Add delay after teams rotation to avoid rate limits
             if i < len(sheet_names) - 1:
-                print(
-                    f"⏳ Waiting {API_RATE_LIMIT_DELAY} seconds "
-                    f"to avoid API rate limits..."
-                )
+                print(f"⏳ Waiting {API_RATE_LIMIT_DELAY} seconds " f"to avoid API rate limits...")
                 time.sleep(API_RATE_LIMIT_DELAY)
+        elif args.type == SheetTypes.TEAMS.value:
+            print(f"ℹ️  No Team sheet found in {sheet_name} - skipping")
 
     # Print summary
     print("\n" + "=" * 80)

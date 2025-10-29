@@ -8,9 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # Path to the script
-SCRIPT_PATH = (
-    Path(__file__).parent.parent / "scripts" / "check_scheduled_rotation_needed.py"
-)
+SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "check_scheduled_rotation_needed.py"
 
 
 def run_check_script(last_date: str | None) -> tuple[int, str, str]:
@@ -103,9 +101,7 @@ class TestCheckScheduledRotation:
         last_date = datetime.now().strftime("%Y-%m-%d")
         exit_code, stdout, stderr = run_check_script(last_date)
 
-        assert (
-            exit_code == 1
-        ), "Same day should return exit code 1 (rotation not needed)"
+        assert exit_code == 1, "Same day should return exit code 1 (rotation not needed)"
         assert "Days since last scheduled rotation: 0" in stdout
         assert "Rotation not needed yet" in stdout
         assert "0 < 14" in stdout
@@ -114,9 +110,7 @@ class TestCheckScheduledRotation:
         """Test when date format is invalid (should treat as first run)"""
         exit_code, stdout, stderr = run_check_script("invalid-date")
 
-        assert (
-            exit_code == 0
-        ), "Invalid date should return exit code 0 (rotation needed)"
+        assert exit_code == 0, "Invalid date should return exit code 0 (rotation needed)"
         assert "Invalid date format" in stdout
         assert "Expected format: YYYY-MM-DD" in stdout
         assert "Treating as first run" in stdout
@@ -125,9 +119,7 @@ class TestCheckScheduledRotation:
         """Test when date format is DD-MM-YYYY instead of YYYY-MM-DD"""
         exit_code, stdout, stderr = run_check_script("29-10-2025")
 
-        assert (
-            exit_code == 0
-        ), "Wrong format should return exit code 0 (rotation needed)"
+        assert exit_code == 0, "Wrong format should return exit code 0 (rotation needed)"
         assert "Invalid date format" in stdout
         assert "29-10-2025" in stdout
 

@@ -8,17 +8,21 @@ eliminating the need for GitHub Secrets.
 
 from typing import Set, Tuple
 
-from lib.env_constants import CONFIG_SHEET
+from lib.env_constants import ConfigColumns, SheetIndicesFallback
 from lib.utilities import get_remote_sheet, increment_api_call_count
 
 
-def load_config_from_sheet(sheet_name: str | None = None) -> Tuple[int, Set[str]]:
+def load_config_from_sheet(
+    sheet_name: str | None = None, config_index: int | None = None
+) -> Tuple[int, Set[str]]:
     """
-    Load configuration from the Config sheet (index 0).
+    Load configuration from the Config sheet.
 
     Args:
         sheet_name: Optional name of the Google Sheet file to open.
             If None, uses SHEET_NAME from environment variable.
+        config_index: Optional index of the Config worksheet.
+            If None, uses SheetIndicesFallback.CONFIG (default: 0).
 
     Expected format:
     - Column A: "Unexperienced Developers" with names listed below
@@ -31,7 +35,12 @@ def load_config_from_sheet(sheet_name: str | None = None) -> Tuple[int, Set[str]
     Note: Developers NOT on this list are experienced.
     """
     try:
-        with get_remote_sheet(CONFIG_SHEET, sheet_name) as sheet:
+        # Use provided config_index or fall back to SheetIndicesFallback.CONFIG
+        sheet_index = (
+            config_index if config_index is not None else SheetIndicesFallback.CONFIG.value
+        )
+
+        with get_remote_sheet(sheet_index, sheet_name) as sheet:
             # Get all values from the sheet
             all_values = sheet.get_all_values()
             increment_api_call_count()  # 1 API call (get_all_values)
@@ -63,7 +72,8 @@ def load_config_from_sheet(sheet_name: str | None = None) -> Tuple[int, Set[str]
                 if all_values[i] and all_values[i][0]:  # If cell A has content
                     name = all_values[i][0].strip()
                     # Skip header
-                    if name and name != "Unexperienced Developers":
+                    expected_header = ConfigColumns.UNEXPERIENCED_DEVELOPERS.value
+                    if name and name != expected_header:
                         unexperienced_devs.add(name)
 
             if not unexperienced_devs:
@@ -79,7 +89,8 @@ def load_config_from_sheet(sheet_name: str | None = None) -> Tuple[int, Set[str]
             )
 
             if unexperienced_devs:
-                print(f"   Names from Config sheet: {sorted(unexperienced_devs)}")
+                sorted_names = sorted(unexperienced_devs)
+                print(f"   Names from Config sheet: {sorted_names}")
 
             return default_reviewer_number, unexperienced_devs
 

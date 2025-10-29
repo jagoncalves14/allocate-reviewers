@@ -61,9 +61,7 @@ def test_allocate_reviewers(mocked_devs: List[Developer]) -> None:
 
         # Basic validation
         assert len(reviewer_names) >= 1, f"{dev.name} should have at least 1 reviewer"
-        assert (
-            dev.name not in reviewer_names
-        ), f"{dev.name} should not review themselves"
+        assert dev.name not in reviewer_names, f"{dev.name} should not review themselves"
 
         # Must have at least 1 experienced reviewer
         experienced_reviewers = reviewer_names & experienced_devs
@@ -74,8 +72,7 @@ def test_allocate_reviewers(mocked_devs: List[Developer]) -> None:
         if not is_experienced:
             # Non-experienced devs can ONLY have experienced reviewers
             assert reviewer_names.issubset(experienced_devs), (
-                f"Non-exp dev {dev.name} can only have exp reviewers, "
-                f"got {reviewer_names}"
+                f"Non-exp dev {dev.name} can only have exp reviewers, " f"got {reviewer_names}"
             )
         else:
             # Experienced devs can have at most 1 non-experienced reviewer
@@ -136,16 +133,13 @@ def test_allocate_reviewers_realistic_scenario() -> None:
 
         # Must have at least 1 experienced reviewer
         exp_reviewers = reviewer_names & experienced_devs
-        assert (
-            len(exp_reviewers) >= 1
-        ), f"{dev.name} must have at least 1 experienced reviewer"
+        assert len(exp_reviewers) >= 1, f"{dev.name} must have at least 1 experienced reviewer"
 
         if not is_experienced:
             # Non-experienced devs (Dev1, Dev11, Dev12) can
             # ONLY have experienced reviewers
             assert reviewer_names.issubset(experienced_devs), (
-                f"Non-exp {dev.name} can only have exp reviewers, "
-                f"got {reviewer_names}"
+                f"Non-exp {dev.name} can only have exp reviewers, " f"got {reviewer_names}"
             )
             # Verify no non-experienced reviewers
             non_exp_reviewers = reviewer_names & non_experienced_devs
@@ -156,8 +150,7 @@ def test_allocate_reviewers_realistic_scenario() -> None:
             # Experienced devs can have at most 1 non-experienced
             non_exp_reviewers = reviewer_names & non_experienced_devs
             assert len(non_exp_reviewers) <= 1, (
-                f"Exp {dev.name} can have at most 1 non-exp, "
-                f"got {non_exp_reviewers}"
+                f"Exp {dev.name} can have at most 1 non-exp, " f"got {non_exp_reviewers}"
             )
 
 
@@ -210,9 +203,7 @@ def test_allocate_reviewers_multiple_iterations() -> None:
             is_experienced = dev.name in experienced_devs
 
             # Must have at least 1 reviewer
-            assert (
-                len(reviewer_names) >= 1
-            ), f"Iteration {iteration}: {dev.name} has no reviewers"
+            assert len(reviewer_names) >= 1, f"Iteration {iteration}: {dev.name} has no reviewers"
 
             # No self-review
             assert (
@@ -221,9 +212,7 @@ def test_allocate_reviewers_multiple_iterations() -> None:
 
             # Must have at least 1 experienced reviewer
             exp_reviewers = reviewer_names & experienced_devs
-            assert (
-                len(exp_reviewers) >= 1
-            ), f"Iteration {iteration}: {dev.name} has no exp reviewer"
+            assert len(exp_reviewers) >= 1, f"Iteration {iteration}: {dev.name} has no exp reviewer"
 
             if not is_experienced:
                 # CRITICAL: Non-experienced devs can ONLY have
@@ -242,8 +231,7 @@ def test_allocate_reviewers_multiple_iterations() -> None:
                 # Experienced devs can have at most 1 non-experienced
                 non_exp_reviewers = reviewer_names & non_experienced_devs
                 assert len(non_exp_reviewers) <= 1, (
-                    f"Iteration {iteration}: Exp {dev.name} has >1 "
-                    f"non-exp: {non_exp_reviewers}"
+                    f"Iteration {iteration}: Exp {dev.name} has >1 " f"non-exp: {non_exp_reviewers}"
                 )
 
     # Reset random seed to avoid affecting other tests
@@ -282,18 +270,12 @@ def test_allocate_reviewers_minimal_constrained_scenario() -> None:
             reviewer_names = dev.reviewer_names
             is_experienced = dev.name in experienced_devs
 
-            assert (
-                len(reviewer_names) >= 1
-            ), f"Iter {iteration}: {dev.name} has no reviewers"
-            assert (
-                dev.name not in reviewer_names
-            ), f"Iter {iteration}: {dev.name} reviewing self"
+            assert len(reviewer_names) >= 1, f"Iter {iteration}: {dev.name} has no reviewers"
+            assert dev.name not in reviewer_names, f"Iter {iteration}: {dev.name} reviewing self"
 
             # Must have at least 1 experienced reviewer
             exp_reviewers = reviewer_names & experienced_devs
-            assert (
-                len(exp_reviewers) >= 1
-            ), f"Iter {iteration}: {dev.name} has no exp reviewer"
+            assert len(exp_reviewers) >= 1, f"Iter {iteration}: {dev.name} has no exp reviewer"
 
             if not is_experienced:
                 # CRITICAL: Non-exp can ONLY have experienced reviewers
@@ -355,18 +337,12 @@ def test_allocate_reviewers_extreme_minimal_scenario() -> None:
             is_experienced = dev.name in experienced_devs
 
             # Basic validation
-            assert (
-                len(reviewer_names) >= 1
-            ), f"Iter {iteration}: {dev.name} has no reviewers"
-            assert (
-                dev.name not in reviewer_names
-            ), f"Iter {iteration}: {dev.name} reviewing self"
+            assert len(reviewer_names) >= 1, f"Iter {iteration}: {dev.name} has no reviewers"
+            assert dev.name not in reviewer_names, f"Iter {iteration}: {dev.name} reviewing self"
 
             # Must have at least 1 experienced reviewer
             exp_reviewers = reviewer_names & experienced_devs
-            assert (
-                len(exp_reviewers) >= 1
-            ), f"Iter {iteration}: {dev.name} missing exp reviewer"
+            assert len(exp_reviewers) >= 1, f"Iter {iteration}: {dev.name} missing exp reviewer"
 
             if not is_experienced:
                 # THE CRITICAL TEST: Non-exp can ONLY have exp reviewers
@@ -388,8 +364,7 @@ def test_allocate_reviewers_extreme_minimal_scenario() -> None:
                 # Exp can have at most 1 non-experienced
                 non_exp_reviewers = reviewer_names & non_experienced_devs
                 assert len(non_exp_reviewers) <= 1, (
-                    f"Iter {iteration}: Exp has too many non-exp: "
-                    f"{non_exp_reviewers}"
+                    f"Iter {iteration}: Exp has too many non-exp: " f"{non_exp_reviewers}"
                 )
 
     random.seed()
@@ -520,14 +495,10 @@ def test_non_experienced_devs_load_balancing() -> None:
     non_exp_reviewer_counts = {}
     for dev in developers:
         if dev.name in experienced_devs:
-            non_exp_count = sum(
-                1 for r in dev.reviewer_names if r in non_experienced_devs
-            )
+            non_exp_count = sum(1 for r in dev.reviewer_names if r in non_experienced_devs)
             non_exp_reviewer_counts[dev.name] = non_exp_count
             # Each can have at most 1
-            assert (
-                non_exp_count <= 1
-            ), f"{dev.name} has {non_exp_count} non-exp reviewers (max 1)"
+            assert non_exp_count <= 1, f"{dev.name} has {non_exp_count} non-exp reviewers (max 1)"
 
     # With 6 exp devs and 2 non-exp devs, and load balancing,
     # we expect relatively even distribution
@@ -568,9 +539,7 @@ def test_non_experienced_with_insufficient_slots() -> None:
             # Non-exp devs can ONLY have experienced reviewers
             assert dev.reviewer_names.issubset(experienced_devs)
             # With 3 exp devs and retry, should be assigned
-            assert (
-                len(dev.review_for) > 0
-            ), f"{dev.name} should be assigned with 3 experienced devs"
+            assert len(dev.review_for) > 0, f"{dev.name} should be assigned with 3 experienced devs"
         else:
             # Experienced devs must have at least 1 experienced reviewer
             exp_reviewers = dev.reviewer_names & experienced_devs
@@ -643,9 +612,7 @@ def test_allocate_reviewers_all_experienced() -> None:
 
         # Basic validation
         assert len(reviewer_names) >= 1, f"{dev.name} should have at least 1 reviewer"
-        assert (
-            dev.name not in reviewer_names
-        ), f"{dev.name} should not review themselves"
+        assert dev.name not in reviewer_names, f"{dev.name} should not review themselves"
 
         # Since all are experienced, they should all get experienced reviewers
         # (which is everyone else)

@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -28,33 +29,82 @@ def get_sheet_names() -> list[str]:
     return []
 
 
-# Sheet indices (0-based)
-CONFIG_SHEET = 0  # First sheet - Configuration
-DEVS_SHEET = 1  # Second sheet - Individual developers
-TEAMS_SHEET = 2  # Third sheet - Teams
+# Sheet types enum
+class SheetTypes(str, Enum):
+    """Sheet type identifiers"""
 
-# Column names for Individual Developers allocation
+    CONFIG = "config"
+    DEVS = "devs"
+    TEAMS = "teams"
+
+
+# Column names enums
+class ConfigColumns(str, Enum):
+    """Column names for Configuration sheet"""
+
+    # List of unexperienced developers
+    UNEXPERIENCED_DEVELOPERS = "Unexperienced Developers"
+    # Default number of reviewers
+    DEFAULT_REVIEWER_NUMBER = "Default Number of Reviewers"
+
+
+class DevsColumns(str, Enum):
+    """Column names for Individual Developers allocation"""
+
+    DEVELOPER = "Developer"  # Developer name (identifier)
+    # Number of reviewers this developer should have
+    REVIEWER_COUNT = "Number of Reviewers"
+    PREFERABLE_REVIEWERS = "Preferable Reviewers"  # Preferred reviewers
+
+
+class TeamsColumns(str, Enum):
+    """Column names for Teams rotation"""
+
+    TEAM = "Team"  # Team name (identifier)
+    TEAM_DEVELOPERS = "Team Developers"  # Developers in this team
+    # Number of reviewers for this team
+    REVIEWER_COUNT = "Number of Reviewers"
+
+
+class SheetIndicesFallback(int, Enum):
+    """
+    Fallback sheet indices (0-based) for when auto-detection is not used.
+    Most common layout: Config at 0, Devs at 1, Teams at 2.
+    Note: run_multi_sheet_rotation.py uses auto-detection instead.
+    """
+
+    CONFIG = 0  # Configuration (default index)
+    DEVS = 1  # Individual developers (default index)
+    TEAMS = 2  # Teams (default index)
+
+
+# Rotation types (only devs and teams can be rotated, config is just configuration)
+ROTATION_TYPES = [SheetTypes.DEVS.value, SheetTypes.TEAMS.value]
+
+# Rotation scheduling
+MINIMUM_DAYS_BETWEEN_ROTATIONS = 14  # 2 weeks (Wednesday to Wednesday)
+
+# Legacy column name lists (kept for backward compatibility)
 INDIVIDUAL_DEVELOPERS_COLUMNS = [
-    "Developer",  # Column 0: Developer name
-    "Number of Reviewers",  # Column 1: Number of reviewers
-    "Preferable Reviewers",  # Column 2: Preferred reviewer names
-]
+    DevsColumns.DEVELOPER.value,
+    DevsColumns.REVIEWER_COUNT.value,
+    DevsColumns.PREFERABLE_REVIEWERS.value,
+]  # noqa: E501
 
-# Column names for Teams rotation
 TEAMS_COLUMNS = [
-    "Team",  # Column 0: Team name (identifier)
-    "Team Developers",  # Column 1: Developers in this team
-    "Number of Reviewers",  # Column 2: Number of reviewers for this team
+    TeamsColumns.TEAM.value,
+    TeamsColumns.TEAM_DEVELOPERS.value,
+    TeamsColumns.REVIEWER_COUNT.value,
 ]
 
-# Convenient access to column names by index
-DEVELOPER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[0]
-REVIEWER_NUMBER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[1]
-PREFERABLE_REVIEWER_HEADER = INDIVIDUAL_DEVELOPERS_COLUMNS[2]
+# Convenient access to column names (using enums)
+DEVELOPER_HEADER = DevsColumns.DEVELOPER.value
+REVIEWER_NUMBER_HEADER = DevsColumns.REVIEWER_COUNT.value
+PREFERABLE_REVIEWER_HEADER = DevsColumns.PREFERABLE_REVIEWERS.value
 
-TEAM_HEADER = TEAMS_COLUMNS[0]
-TEAM_DEVELOPERS_HEADER = TEAMS_COLUMNS[1]
-TEAM_REVIEWER_NUMBER_HEADER = TEAMS_COLUMNS[2]
+TEAM_HEADER = TeamsColumns.TEAM.value
+TEAM_DEVELOPERS_HEADER = TeamsColumns.TEAM_DEVELOPERS.value
+TEAM_REVIEWER_NUMBER_HEADER = TeamsColumns.REVIEWER_COUNT.value
 
 # Expected headers for each sheet type
 EXPECTED_HEADERS_FOR_ALLOCATION = INDIVIDUAL_DEVELOPERS_COLUMNS

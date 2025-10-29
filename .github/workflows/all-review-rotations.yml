@@ -57,7 +57,7 @@ jobs:
         run: |
           echo "⏭️  Scheduled rotation skipped - less than 15 days since last rotation"
           echo "   Last scheduled rotation: ${{ vars.LAST_SCHEDULED_ROTATION_DATE }}"
-          echo "   Next rotation will run when 15+ days have passed"
+          echo "   Next rotation will run when 14+ days have passed"
           exit 0
       
       - name: Create credentials file

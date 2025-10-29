@@ -1,7 +1,7 @@
 """
 Check if a rotation is needed based on the last execution date
 in the Google Sheet.
-Exit code 0: Rotation needed (15+ days since last rotation)
+Exit code 0: Rotation needed (14+ days since last rotation)
 Exit code 1: Rotation not needed yet
 """
 
@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib.env_constants import (  # noqa: E402
     EXPECTED_HEADERS_FOR_ALLOCATION,
     EXPECTED_HEADERS_FOR_ROTATION,
+    MINIMUM_DAYS_BETWEEN_ROTATIONS,
+    ROTATION_TYPES,
 )
 
 DRIVE_SCOPE = [
@@ -28,12 +30,8 @@ DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 
-MINIMUM_DAYS_BETWEEN_ROTATIONS = 14  # 2 weeks (Wednesday to Wednesday)
 
-
-def get_last_rotation_date(
-    expected_headers: list[str], sheet_index: int = 0
-) -> datetime | None:
+def get_last_rotation_date(expected_headers: list[str], sheet_index: int = 0) -> datetime | None:
     """
     Read the Google Sheet and find the most recent rotation date.
     The date is stored in the header row after the first 3 columns.
@@ -41,29 +39,24 @@ def get_last_rotation_date(
     For manual runs, we extract the Sprint Date (before the " / ")
     to maintain schedule.
     """
-    CREDENTIAL_FILE = os.environ.get("CREDENTIAL_FILE")
-    SHEET_NAME = os.environ.get("SHEET_NAME")
+    credential_file = os.environ.get("CREDENTIAL_FILE")
+    sheet_name = os.environ.get("SHEET_NAME")
 
-    if not CREDENTIAL_FILE or not SHEET_NAME:
-        print(
-            "Error: CREDENTIAL_FILE and SHEET_NAME environment "
-            "variables are required"
-        )
+    if not credential_file or not sheet_name:
+        print("Error: CREDENTIAL_FILE and SHEET_NAME environment variables are required")
         sys.exit(1)
 
     try:
-        credential = ServiceAccountCredentials.from_json_keyfile_name(
-            CREDENTIAL_FILE, DRIVE_SCOPE
-        )
+        credential = ServiceAccountCredentials.from_json_keyfile_name(credential_file, DRIVE_SCOPE)
         client = gspread.authorize(credential)
-        spreadsheet = client.open(SHEET_NAME)
+        spreadsheet = client.open(sheet_name)
         sheet = spreadsheet.get_worksheet(sheet_index)
 
         # Get the first row (headers)
         first_row = sheet.row_values(1)
 
         # Skip the first N columns (before date columns)
-        date_columns = first_row[len(expected_headers) :]
+        date_columns = first_row[len(expected_headers) :]  # noqa: E203
 
         if not date_columns:
             print("No previous rotations found in the sheet")
@@ -78,10 +71,7 @@ def get_last_rotation_date(
             sprint_date_str = last_date_str.split(" / Manual Run on:")[0].strip()
             try:
                 last_date = datetime.strptime(sprint_date_str, "%d-%m-%Y")
-                print(
-                    f"Last sprint date (from manual run): "
-                    f"{last_date.strftime('%d-%m-%Y')}"
-                )
+                print(f"Last sprint date (from manual run): " f"{last_date.strftime('%d-%m-%Y')}")
                 return last_date
             except ValueError:
                 print(f"Warning: Could not parse sprint date " f"'{sprint_date_str}'")
@@ -109,32 +99,56 @@ def main() -> None:
     Main entry point to check if rotation is needed based on date threshold.
 
     Reads the last rotation date from the Google Sheet and exits with:
-    - Exit code 0: Rotation is needed (15+ days passed)
+    - Exit code 0: Rotation is needed (14+ days passed)
     - Exit code 1: Rotation not needed or error occurred
     """
     # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description="Check if rotation is needed (15+ days)"
-    )
+    parser = argparse.ArgumentParser(description="Check if rotation is needed (14+ days)")
     parser.add_argument(
         "--sheet-type",
-        choices=["devs", "teams"],
+        choices=ROTATION_TYPES,
         default="devs",
         help="Type of sheet to check (default: devs)",
     )
     args = parser.parse_args()
 
-    # Select appropriate headers and sheet index based on sheet type
-    from lib.env_constants import DEVS_SHEET, TEAMS_SHEET
+    # Auto-detect sheet indices
+    from lib.env_constants import SheetIndicesFallback, SheetTypes
+    from scripts.run_multi_sheet_rotation import detect_all_sheet_types
 
+    sheet_name = os.environ.get("SHEET_NAME")
+    if not sheet_name:
+        print("Error: SHEET_NAME environment variable is required")
+        sys.exit(1)
+
+    print(f"🔍 Auto-detecting sheet types in: {sheet_name}")
+    detected_sheets = detect_all_sheet_types(sheet_name)
+
+    # Select appropriate headers and sheet index based on sheet type
     if args.sheet_type == "teams":
         expected_headers = EXPECTED_HEADERS_FOR_ROTATION
-        sheet_index = TEAMS_SHEET
-        print("Checking third sheet (Teams) rotation...")
+        # Use detected index or fall back to constant
+        sheet_index = detected_sheets.get(SheetTypes.TEAMS, SheetIndicesFallback.TEAMS.value)
+        if SheetTypes.TEAMS in detected_sheets:
+            print(f"✅ Using detected Teams sheet at index {sheet_index}")
+        else:
+            print(
+                f"⚠️  Teams sheet not detected, using default index "
+                f"{SheetIndicesFallback.TEAMS.value}"
+            )
+            sheet_index = SheetIndicesFallback.TEAMS.value
     else:
         expected_headers = EXPECTED_HEADERS_FOR_ALLOCATION
-        sheet_index = DEVS_SHEET
-        print("Checking second sheet (Individual Developers) rotation...")
+        # Use detected index or fall back to constant
+        sheet_index = detected_sheets.get(SheetTypes.DEVS, SheetIndicesFallback.DEVS.value)
+        if SheetTypes.DEVS in detected_sheets:
+            print(f"✅ Using detected Devs sheet at index {sheet_index}")
+        else:
+            print(
+                f"⚠️  Devs sheet not detected, using default index "
+                f"{SheetIndicesFallback.DEVS.value}"
+            )
+            sheet_index = SheetIndicesFallback.DEVS.value
 
     last_rotation_date = get_last_rotation_date(expected_headers, sheet_index)
 
