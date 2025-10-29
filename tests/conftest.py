@@ -1,5 +1,11 @@
 """Test fixtures for pytest."""
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports - must be before lib imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from copy import deepcopy
 from typing import Dict, Generator, List
 from unittest.mock import patch
