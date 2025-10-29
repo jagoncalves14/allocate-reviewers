@@ -15,6 +15,9 @@ on:
 jobs:
   all-review-rotations:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # Needed to update GitHub Variables
     
     steps:
       - name: Checkout repository
@@ -33,11 +36,37 @@ jobs:
       - name: Install dependencies
         run: poetry install
       
+      - name: Check if Scheduled Rotation is Needed
+        id: check_rotation
+        if: github.event_name == 'schedule'
+        env:
+          LAST_SCHEDULED_ROTATION_DATE: ${{ vars.LAST_SCHEDULED_ROTATION_DATE }}
+        run: |
+          echo "🔍 Checking if scheduled rotation is needed..."
+          
+          if poetry run python scripts/check_scheduled_rotation_needed.py; then
+            echo "rotation_needed=true" >> $GITHUB_OUTPUT
+            echo "✅ Rotation will proceed"
+          else
+            echo "rotation_needed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Skipping rotation (not yet due)"
+          fi
+      
+      - name: Skip Rotation Message
+        if: github.event_name == 'schedule' && steps.check_rotation.outputs.rotation_needed != 'true'
+        run: |
+          echo "⏭️  Scheduled rotation skipped - less than 15 days since last rotation"
+          echo "   Last scheduled rotation: ${{ vars.LAST_SCHEDULED_ROTATION_DATE }}"
+          echo "   Next rotation will run when 15+ days have passed"
+          exit 0
+      
       - name: Create credentials file
+        if: github.event_name != 'schedule' || steps.check_rotation.outputs.rotation_needed == 'true'
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
       
       - name: Run All Rotations (All Sheets, All Types)
+        if: github.event_name != 'schedule' || steps.check_rotation.outputs.rotation_needed == 'true'
         env:
           CREDENTIAL_FILE: credentials.json
           SHEET_NAMES: ${{ vars.SHEET_NAMES }}
@@ -73,6 +102,23 @@ jobs:
           # Run the multi-sheet rotation (processes ALL sheets, ALL types)
           poetry run python scripts/run_multi_sheet_rotation.py --type all $MANUAL_FLAG
       
+      - name: Update Last Scheduled Rotation Date
+        if: |
+          github.event_name == 'schedule' && 
+          steps.check_rotation.outputs.rotation_needed == 'true' &&
+          success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "📝 Updating LAST_SCHEDULED_ROTATION_DATE to: $TODAY"
+          
+          # Update the GitHub Variable using GitHub CLI
+          gh variable set LAST_SCHEDULED_ROTATION_DATE --body "$TODAY" --repo "$REPO"
+          
+          echo "✅ Last scheduled rotation date updated successfully"
+      
       - name: Clean up credentials
         if: always()
         run: rm -f credentials.json
@@ -80,7 +126,10 @@ jobs:
       - name: Report Status
         if: always()
         run: |
-          if [ ${{ job.status }} == 'success' ]; then
+          if [ "${{ github.event_name }}" == "schedule" ] && [ "${{ steps.check_rotation.outputs.rotation_needed }}" != "true" ]; then
+            echo "⏭️  Scheduled rotation was skipped (not yet due)"
+            exit 0
+          elif [ ${{ job.status }} == 'success' ]; then
             echo "✅ All rotations completed successfully!"
           else
             echo "❌ Some rotations failed - check logs above"

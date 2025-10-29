@@ -362,6 +362,7 @@ Two additional workflows are available for **manual execution only** (no cron):
    | Variable Name | Description | Example |
    |---------------|-------------|---------|
    | `SHEET_NAMES` | Sheet name(s) - one per line | See below |
+   | `LAST_SCHEDULED_ROTATION_DATE` | Last scheduled rotation date (auto-updated) | `2025-10-29` |
    
    **Enter sheet names (one per line):**
    
@@ -376,6 +377,13 @@ Two additional workflows are available for **manual execution only** (no cron):
    Backend - Code Reviewers
    Mobile - Code Reviewers
    ```
+   
+   **About `LAST_SCHEDULED_ROTATION_DATE`:**
+   - 📅 Stores the date of the last **scheduled** rotation (format: `YYYY-MM-DD`)
+   - 🤖 Automatically updated by scheduled workflows (you don't need to set it)
+   - 🔧 Leave empty on first setup (workflow will populate it)
+   - ⏭️ Ensures rotations run every 2 Wednesdays (14 days)
+   - 📖 See [SCHEDULED_ROTATION_GUIDE.md](SCHEDULED_ROTATION_GUIDE.md) for details
    
    ✨ **No longer needed as secrets:**
    - ~~`DEFAULT_REVIEWER_NUMBER`~~ → Now in Config sheet (Cell B2)

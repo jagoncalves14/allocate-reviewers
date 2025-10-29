@@ -25,6 +25,19 @@ Runs both individual developers and teams rotations for all configured sheets.
 
 **Schedule:** Every Wednesday at 5:00 AM Finland Time (3:00 AM UTC)
 
+**Smart Scheduling:**
+- ✅ Only runs if 14+ days have passed since last **scheduled** rotation (every 2 Wednesdays)
+- 📅 Tracks last scheduled date in GitHub Variable: `LAST_SCHEDULED_ROTATION_DATE`
+- 🔧 Manual runs don't affect the schedule
+- ⏭️ Skips rotation if < 14 days (logs message and exits successfully)
+
+**How it works:**
+1. Check `LAST_SCHEDULED_ROTATION_DATE` variable
+2. If ≥ 14 days → run rotation and update variable
+3. If < 14 days → skip and log when next rotation is due
+
+See [SCHEDULED_ROTATION_GUIDE.md](../../SCHEDULED_ROTATION_GUIDE.md) for detailed explanation.
+
 ---
 
 ### 👤 `single-sheet-devs-rotation.yml` - Single Sheet Developers Rotation

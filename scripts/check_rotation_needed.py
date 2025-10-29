@@ -28,7 +28,7 @@ DRIVE_SCOPE = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 
-MINIMUM_DAYS_BETWEEN_ROTATIONS = 15
+MINIMUM_DAYS_BETWEEN_ROTATIONS = 14  # 2 weeks (Wednesday to Wednesday)
 
 
 def get_last_rotation_date(
