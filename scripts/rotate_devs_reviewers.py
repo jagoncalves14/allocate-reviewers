@@ -126,7 +126,11 @@ def shuffle_and_get_the_most_available_names(
     """
     if number_of_names == 0:
         return []
-    names = list(available_names)
+
+    # Filter to only include names that exist in devs list
+    all_dev_names = {dev.name for dev in devs}
+    valid_names = available_names & all_dev_names
+    names = list(valid_names)
 
     if 0 == len(names) <= number_of_names:
         return names

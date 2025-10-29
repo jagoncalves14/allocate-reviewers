@@ -619,3 +619,271 @@ def test_allocate_reviewers_all_experienced() -> None:
         assert (
             len(reviewer_names) <= dev.reviewer_number
         ), f"{dev.name} should not exceed their reviewer number"
+
+
+# ============================================================================
+# PREFERABLE REVIEWERS TESTS
+# ============================================================================
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_basic() -> None:
+    """
+    Test that preferable reviewers are prioritized when specified.
+
+    Dev1 prefers Dev2 and Dev3. With 2 reviewers needed, should get both.
+    """
+    developers = [
+        Developer(name="Dev1", reviewer_number=2, preferable_reviewer_names={"Dev2", "Dev3"}),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+        Developer(name="Dev5", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+
+    # Dev1 should have Dev2 and Dev3 as reviewers (their preferred choices)
+    assert dev1.reviewer_names == {
+        "Dev2",
+        "Dev3",
+    }, f"Dev1 should have preferable reviewers Dev2 and Dev3, got {dev1.reviewer_names}"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_partial_fulfillment() -> None:
+    """
+    Test when a developer needs more reviewers than preferable reviewers available.
+
+    Dev1 prefers Dev2, but needs 3 reviewers. Should get Dev2 + 2 others.
+    """
+    developers = [
+        Developer(name="Dev1", reviewer_number=3, preferable_reviewer_names={"Dev2"}),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+        Developer(name="Dev5", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+
+    # Dev1 should have Dev2 (preferable) plus 2 others
+    assert "Dev2" in dev1.reviewer_names, "Dev1 should have preferable reviewer Dev2"
+    assert (
+        len(dev1.reviewer_names) == 3
+    ), f"Dev1 should have 3 reviewers, got {len(dev1.reviewer_names)}"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_excludes_self() -> None:
+    """
+    Test that a developer listing themselves in preferable reviewers is handled.
+
+    Dev1 lists themselves in preferable reviewers (should be ignored).
+    """
+    developers = [
+        Developer(
+            name="Dev1", reviewer_number=2, preferable_reviewer_names={"Dev1", "Dev2", "Dev3"}
+        ),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+
+    # Dev1 should NOT be reviewing themselves
+    assert "Dev1" not in dev1.reviewer_names, "Dev1 should not review themselves"
+    # Should have Dev2 and Dev3 (the other preferable reviewers)
+    assert dev1.reviewer_names == {
+        "Dev2",
+        "Dev3",
+    }, f"Dev1 should have Dev2 and Dev3 (excluding self), got {dev1.reviewer_names}"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", {"Dev1", "Dev5"})
+def test_preferable_reviewers_with_experience_constraints() -> None:
+    """
+    Test that preferable reviewers respect experience-based constraints.
+
+    Dev1 (unexperienced) prefers Dev2 and Dev5.
+    Dev5 is also unexperienced, so should only get Dev2.
+    """
+    developers = [
+        Developer(name="Dev1", reviewer_number=2, preferable_reviewer_names={"Dev2", "Dev5"}),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+        Developer(name="Dev5", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+    experienced_devs = {"Dev2", "Dev3", "Dev4"}
+
+    # Dev1 is unexperienced, so can only have experienced reviewers
+    assert dev1.reviewer_names.issubset(
+        experienced_devs
+    ), f"Unexperienced Dev1 can only have experienced reviewers, got {dev1.reviewer_names}"
+    # Should have Dev2 (preferable and experienced) plus another experienced dev
+    assert "Dev2" in dev1.reviewer_names, "Dev1 should have preferable reviewer Dev2"
+    assert "Dev5" not in dev1.reviewer_names, "Dev1 should not have Dev5 (both unexperienced)"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_multiple_devs_same_preference() -> None:
+    """
+    Test load balancing when multiple developers prefer the same reviewers.
+
+    Dev1 and Dev2 both prefer Dev3. Dev3 should be assigned fairly.
+    """
+    developers = [
+        Developer(name="Dev1", reviewer_number=2, preferable_reviewer_names={"Dev3", "Dev4"}),
+        Developer(name="Dev2", reviewer_number=2, preferable_reviewer_names={"Dev3", "Dev4"}),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+        Developer(name="Dev5", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+    dev2 = next(d for d in developers if d.name == "Dev2")
+
+    # Both should get their preferable reviewers
+    assert dev1.reviewer_names == {
+        "Dev3",
+        "Dev4",
+    }, f"Dev1 should have preferable reviewers, got {dev1.reviewer_names}"
+    assert dev2.reviewer_names == {
+        "Dev3",
+        "Dev4",
+    }, f"Dev2 should have preferable reviewers, got {dev2.reviewer_names}"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_empty_list() -> None:
+    """
+    Test that developers with no preferable reviewers still get assigned.
+    """
+    developers = [
+        Developer(name="Dev1", reviewer_number=2, preferable_reviewer_names=set()),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+
+    # Dev1 should still get 2 reviewers (randomly selected)
+    assert (
+        len(dev1.reviewer_names) == 2
+    ), f"Dev1 should have 2 reviewers even without preferences, got {len(dev1.reviewer_names)}"
+    assert "Dev1" not in dev1.reviewer_names, "Dev1 should not review themselves"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", {"NE1", "NE2"})
+def test_preferable_reviewers_experienced_dev_prefers_unexperienced() -> None:
+    """
+    Test experienced developer preferring unexperienced reviewers.
+
+    E1 (experienced) prefers NE1 and NE2 (both unexperienced).
+    Should get both since experienced devs can have up to 1 unexperienced.
+    """
+    developers = [
+        Developer(name="E1", reviewer_number=2, preferable_reviewer_names={"E2", "NE1"}),
+        Developer(name="E2", reviewer_number=2),
+        Developer(name="E3", reviewer_number=2),
+        Developer(name="NE1", reviewer_number=2),
+        Developer(name="NE2", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    e1 = next(d for d in developers if d.name == "E1")
+    experienced_devs = {"E1", "E2", "E3"}
+    non_experienced_devs = {"NE1", "NE2"}
+
+    # E1 should get E2 (experienced, preferable) as at least one reviewer
+    exp_reviewers = e1.reviewer_names & experienced_devs
+    assert len(exp_reviewers) >= 1, "E1 must have at least 1 experienced reviewer"
+
+    # E1 can have at most 1 unexperienced reviewer
+    non_exp_reviewers = e1.reviewer_names & non_experienced_devs
+    assert (
+        len(non_exp_reviewers) <= 1
+    ), f"E1 can have at most 1 unexperienced reviewer, got {non_exp_reviewers}"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_nonexistent_names() -> None:
+    """
+    Test handling of nonexistent names in preferable reviewers list.
+
+    Dev1 prefers "NonExistent" who doesn't exist. Should get other reviewers.
+    """
+    developers = [
+        Developer(
+            name="Dev1", reviewer_number=2, preferable_reviewer_names={"NonExistent", "Dev2"}
+        ),
+        Developer(name="Dev2", reviewer_number=2),
+        Developer(name="Dev3", reviewer_number=2),
+        Developer(name="Dev4", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+
+    # Dev1 should have Dev2 (the valid preferable) plus one other
+    assert "Dev2" in dev1.reviewer_names, "Dev1 should have valid preferable reviewer Dev2"
+    assert (
+        len(dev1.reviewer_names) == 2
+    ), f"Dev1 should have 2 reviewers, got {len(dev1.reviewer_names)}"
+    assert "NonExistent" not in dev1.reviewer_names, "NonExistent should not be assigned"
+
+
+@patch("lib.env_constants.UNEXPERIENCED_DEV_NAMES", set())
+def test_preferable_reviewers_priority_ordering() -> None:
+    """
+    Test that devs with more preferable reviewers are processed first.
+
+    Dev1 has 3 preferable reviewers, Dev2 has 1, Dev3 has none.
+    Dev1 should be processed first to maximize preference fulfillment.
+    """
+    developers = [
+        Developer(
+            name="Dev1", reviewer_number=2, preferable_reviewer_names={"Dev4", "Dev5", "Dev6"}
+        ),
+        Developer(name="Dev2", reviewer_number=2, preferable_reviewer_names={"Dev4"}),
+        Developer(name="Dev3", reviewer_number=2, preferable_reviewer_names=set()),
+        Developer(name="Dev4", reviewer_number=2),
+        Developer(name="Dev5", reviewer_number=2),
+        Developer(name="Dev6", reviewer_number=2),
+    ]
+
+    allocate_reviewers(developers)
+
+    dev1 = next(d for d in developers if d.name == "Dev1")
+    dev2 = next(d for d in developers if d.name == "Dev2")
+    dev3 = next(d for d in developers if d.name == "Dev3")
+
+    # Dev1 should get at least 2 of their preferable reviewers
+    preferable_assigned_dev1 = dev1.reviewer_names & {"Dev4", "Dev5", "Dev6"}
+    assert (
+        len(preferable_assigned_dev1) >= 2
+    ), f"Dev1 should get at least 2 preferable reviewers, got {preferable_assigned_dev1}"
+
+    # All should have correct number of reviewers
+    assert len(dev1.reviewer_names) == 2
+    assert len(dev2.reviewer_names) == 2
+    assert len(dev3.reviewer_names) == 2
