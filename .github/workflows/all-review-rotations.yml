@@ -4,8 +4,8 @@ on:
   schedule:
     # Runs every Wednesday at 4 AM Finland time (2 AM UTC)
     # - cron: '0 2 * * 3'
-    # TESTING: Runs at 9:45 UTC (will revert after test)
-    - cron: '45 9 * * 3'
+    # TESTING: Runs at 14:15 UTC (will revert after test)
+    - cron: '15 14 * * 3'
   workflow_dispatch:
     inputs:
       manual_run:
