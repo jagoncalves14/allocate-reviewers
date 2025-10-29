@@ -1,19 +1,18 @@
 """Test fixtures for pytest."""
 
 import sys
-from pathlib import Path
-
-# Add parent directory to path for imports - must be before lib imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from copy import deepcopy
+from pathlib import Path
 from typing import Dict, Generator, List
 from unittest.mock import patch
 
 import pytest
 from gspread import Worksheet
 
-from lib.data_types import Developer
+# Add parent directory to path for imports - must be before lib imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from lib.data_types import Developer  # noqa: E402
 
 SHEET = [
     {

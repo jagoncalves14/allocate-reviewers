@@ -375,17 +375,18 @@ def load_developers_from_sheet(
         # Import here to get the current value, not the import-time value
         from lib import env_constants
 
-        values_mapper = lambda record: Developer(
-            name=record[DEVELOPER_HEADER],
-            reviewer_number=int(
-                record[REVIEWER_NUMBER_HEADER] or env_constants.DEFAULT_REVIEWER_NUMBER
-            ),
-            preferable_reviewer_names=(
-                set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
-                if record[PREFERABLE_REVIEWER_HEADER]
-                else set()
-            ),
-        )
+        def values_mapper(record):
+            return Developer(
+                name=record[DEVELOPER_HEADER],
+                reviewer_number=int(
+                    record[REVIEWER_NUMBER_HEADER] or env_constants.DEFAULT_REVIEWER_NUMBER
+                ),
+                preferable_reviewer_names=(
+                    set((record[PREFERABLE_REVIEWER_HEADER]).split(", "))
+                    if record[PREFERABLE_REVIEWER_HEADER]
+                    else set()
+                ),
+            )
 
     with get_remote_sheet(sheet_index, sheet_name) as sheet:
         records = sheet.get_all_records(expected_headers=expected_headers)

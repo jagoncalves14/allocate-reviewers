@@ -58,7 +58,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.data_types import Developer  # noqa: E402
 from lib.env_constants import (  # noqa: E402
-    DEFAULT_REVIEWER_NUMBER,
     EXPECTED_HEADERS_FOR_ROTATION,
     TEAM_DEVELOPERS_HEADER,
     TEAM_HEADER,
