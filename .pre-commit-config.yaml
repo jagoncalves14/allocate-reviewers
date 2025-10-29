@@ -1,15 +1,36 @@
 default_language_version:
     python: python3.11
+
 repos:
--   repo: https://github.com/ambv/black
-    rev: "22.3.0"
+  # Code formatting
+  - repo: https://github.com/psf/black
+    rev: "24.10.0"
     hooks:
-    - id: black
-#-   repo: https://github.com/timothycrosley/isort
-#    rev: "5.12.0"
-#    hooks:
-#    - id: isort
--   repo: https://github.com/PyCQA/autoflake
-    rev: v2.0.2
+      - id: black
+        language_version: python3.11
+
+  # Remove unused imports and variables
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
     hooks:
-    - id: autoflake
+      - id: autoflake
+        args: ['--in-place', '--remove-all-unused-imports', '--remove-unused-variables']
+
+  # Sort imports
+  - repo: https://github.com/PyCQA/isort
+    rev: "5.13.2"
+    hooks:
+      - id: isort
+        args: ['--profile', 'black']
+
+  # Run tests before commit
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: poetry run python -m pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: [tests/, -v, --tb=short]
+        stages: [commit]

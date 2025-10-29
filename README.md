@@ -199,6 +199,12 @@ This means you can update configuration directly in the Google Sheet without tou
    poetry install
    ```
 
+4. **Install pre-commit hooks** (optional but recommended):
+   ```bash
+   poetry run pre-commit install
+   ```
+   This will automatically run tests and code formatting before each commit.
+
 ### Step 4: Run the Scripts
    
    **Single Sheet Mode:**
@@ -224,6 +230,34 @@ This means you can update configuration directly in the Google Sheet without tou
    # Manual run (updates existing column instead of creating new)
    poetry run python scripts/run_multi_sheet_rotation.py --type all --manual
    ```
+
+### Step 5: Testing
+
+**Run tests locally:**
+```bash
+# Run all tests
+poetry run pytest tests/ -v
+
+# Run tests with coverage
+poetry run coverage run -m pytest tests/
+poetry run coverage report -m
+
+# Run pre-commit checks (formatting + tests)
+poetry run pre-commit run --all-files
+```
+
+**Pre-commit hooks:**
+The project has pre-commit hooks that automatically run before each commit:
+- ✨ **Black**: Code formatting
+- 🧹 **Autoflake**: Remove unused imports/variables
+- 📦 **isort**: Sort imports
+- ✅ **Pytest**: Run all tests
+
+Install with: `poetry run pre-commit install`
+
+**CI/CD:**
+Tests automatically run on every pull request via GitHub Actions.
+See `.github/workflows/tests.yml` for configuration.
 
 ## Automated Execution with GitHub Actions
 
