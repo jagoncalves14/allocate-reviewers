@@ -33,7 +33,7 @@
     "drizzle-orm": "^0.45.2",
     "lucide-vue-next": "^0.577.0",
     "nanoid": "^5.1.7",
-    "nuxt": "^4.4.2",
+    "nuxt": "^4.4.6",
     "nuxt-auth-utils": "^0.5.29",
     "nuxt-llms": "^0.2.0",
     "reka-ui": "^2.9.2",
